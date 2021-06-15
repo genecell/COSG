@@ -1,0 +1,9 @@
+README.rst
+setup.py
+cosg/__init__.py
+cosg/cosg.py
+cosg.egg-info/PKG-INFO
+cosg.egg-info/SOURCES.txt
+cosg.egg-info/dependency_links.txt
+cosg.egg-info/requires.txt
+cosg.egg-info/top_level.txt
