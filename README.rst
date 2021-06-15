@@ -18,7 +18,7 @@ The documentation for COSG is available `here <https://cosg.readthedocs.io/en/la
 Tutorial
 ---------
 
-The `COSG tutorial <https://cosg.readthedocs.io/en/latest/tutorial/COSG-tutorial.html>`_ provides a quick-start guide for using COSG and demonstrates the superior performance of COSG as compared with other methods, and the `Jupyter notebook <https://github.com/genecell/COSG/blob/main/tutorials/COSG-tutorial.ipynb>`_ is also available.
+The `COSG tutorial <https://nbviewer.jupyter.org/github/genecell/COSG/blob/main/tutorials/COSG-tutorial.ipynb>`_ provides a quick-start guide for using COSG and demonstrates the superior performance of COSG as compared with other methods, and the `Jupyter notebook <https://github.com/genecell/COSG/blob/main/tutorials/COSG-tutorial.ipynb>`_ is also available.
 
 Question
 ---------
