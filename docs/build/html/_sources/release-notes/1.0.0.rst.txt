@@ -1,0 +1,10 @@
+1.0.0
+~~~~~
+
+COSG is an accurate and efficient marker gene identification method for single cell sequencing data.
+
+- COSG is applicable to single-cell RNA sequencing data, single-cell ATAC sequencing data and spatially resolved transcriptome data.
+- COSG is fast and scalable for ultra-large datasets of million-scale cells (less than two minutes for one million cells with one CPU core).
+- Marker genes or genomic regions identified by COSG are more indicative and with greater cell-type specificity.
+
+Min Dai (2021-06-15)
