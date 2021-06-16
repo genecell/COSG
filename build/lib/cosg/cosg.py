@@ -49,6 +49,7 @@ def cosg(
 ):
     """\
     Marker gene identification for single-cell sequencing data using COSG.
+    
     Parameters
     ----------
     adata
@@ -78,14 +79,14 @@ def cosg(
  
     Returns
     -------
-    **names** : structured `np.ndarray` (`.uns['rank_genes_groups']`)
+    names : structured `np.ndarray` (`.uns['rank_genes_groups']`)
         Structured array to be indexed by group id storing the gene names. Ordered according to scores.
-    **scores** : structured `np.ndarray` (`.uns['rank_genes_groups']`)
+    scores : structured `np.ndarray` (`.uns['rank_genes_groups']`)
         Structured array to be indexed by group id storing COSG scores for each gene for each
         group. Ordered according to scores.
     Notes
     -----
-    Contact: daimin@zju.edu.cn
+    Contact: Min Dai, daimin@zju.edu.cn
     Examples
     --------
     >>> import cosg as cosg
@@ -243,9 +244,6 @@ def cosg(
     dtypes = {
     'names': 'O',
     'scores': 'float32',
-    # 'logfoldchanges': 'float32',
-    # 'pvals': 'float64',
-    # 'pvals_adj': 'float64',
     }
     ###
     rank_stats.columns = rank_stats.columns.swaplevel()

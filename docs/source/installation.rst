@@ -14,4 +14,4 @@ PyPI
 ~~~~
 Please run:
 ::
-    pip install 'COSG'
+    pip install cosg

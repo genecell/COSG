@@ -1,12 +1,12 @@
 Metadata-Version: 1.1
 Name: cosg
-Version: 1.0.0
-Summary: Marker gene identification for single-cell sequencing data
-Home-page: https://github.com/genecell
+Version: 1.0.1
+Summary: Accurate and fast cell marker gene identification with COSG
+Home-page: https://github.com/genecell/COSG
 Author: Min Dai
 Author-email: daimin@zju.edu.cn
-License: MIT
-Download-URL: https://github.com/genecell
+License: BSD 3-Clause License
+Download-URL: https://github.com/genecell/COSG
 Description: Accurate and fast cell marker gene identification with COSG
         =======================================================================================================
         
@@ -18,12 +18,16 @@ Description: Accurate and fast cell marker gene identification with COSG
         - Marker genes or genomic regions identified by COSG are more indicative and with greater cell-type specificity.
         - COSG is ultrafast for large-scale datasets, and is capable of identifying marker genes for one million cells in less than two minutes.
         
-        The method and benchmarking results are described in `Dai et al., (2021)`_.
+        The method and benchmarking results are described in `Dai et al., (2021)`_. 
+        
+        Documentation
+        --------------
+        The documentation for COSG is available `here <https://cosg.readthedocs.io/en/latest/>`_.
         
         Tutorial
         ---------
         
-        The `COSG tutorial <https://cosg.readthedocs.io/en/latest/tutorials/COSG-tutorial.ipynb>`_ provides a quick-start guide for using COSG and demonstrates the superior performance of COSG as compared with other methods.
+        The `COSG tutorial <https://nbviewer.jupyter.org/github/genecell/COSG/blob/main/tutorials/COSG-tutorial.ipynb>`_ provides a quick-start guide for using COSG and demonstrates the superior performance of COSG as compared with other methods, and the `Jupyter notebook <https://github.com/genecell/COSG/blob/main/tutorials/COSG-tutorial.ipynb>`_ is also available.
         
         Question
         ---------
@@ -34,6 +38,7 @@ Description: Accurate and fast cell marker gene identification with COSG
         If COSG is useful for your research, please consider citing `Dai et al., (2021)`_.
         
         .. _Dai et al., (2021): https://www.biorxiv.org/content/10.1101/2021.06.15.448484v1
+        
         
         
 Platform: UNKNOWN

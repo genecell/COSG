@@ -1,3 +1,12 @@
+|Stars| |PyPI| |Docs| 
+
+.. |Stars| image:: https://img.shields.io/github/stars/genecell/COSG?logo=GitHub&color=yellow
+   :target: https://github.com/genecell/COSG/stargazers
+.. |PyPI| image:: https://img.shields.io/pypi/v/cosg?logo=PyPI
+   :target: https://pypi.org/project/cosg
+.. |Docs| image:: https://readthedocs.org/projects/cosg/badge/?version=latest
+   :target: https://cosg.readthedocs.io
+
 Accurate and fast cell marker gene identification with COSG
 =======================================================================================================
 
