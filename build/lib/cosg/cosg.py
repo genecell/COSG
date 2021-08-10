@@ -6,7 +6,10 @@ from scipy import sparse
 from typing import Iterable, Union, Optional
 
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> 55514a16bf1a93c065806f56b111f8a9905c7362
 ### Refer to: https://github.com/theislab/scanpy/blob/5533b644e796379fd146bf8e659fd49f92f718cd/scanpy/_compat.py
 try:
     from typing import Literal
@@ -24,13 +27,17 @@ except ImportError:
         class Literal(metaclass=LiteralMeta):
             pass
 
+<<<<<<< HEAD
 ### Refer to Scanpy       
+=======
+>>>>>>> 55514a16bf1a93c065806f56b111f8a9905c7362
 def _select_top_n(scores, n_top):
     reference_indices = np.arange(scores.shape[0], dtype=int)
     partition = np.argpartition(scores, -n_top)[-n_top:]
     partial_indices = np.argsort(scores[partition])[::-1]
     global_indices = reference_indices[partition][partial_indices]
     return global_indices
+<<<<<<< HEAD
 
 
 ### Import from Scanpy
@@ -308,6 +315,8 @@ class _RankGenes:
                 # deleting the next line causes a memory leak for some reason
                 del X_rest
 
+=======
+>>>>>>> 55514a16bf1a93c065806f56b111f8a9905c7362
         
 def cosg(
     adata,
@@ -320,7 +329,10 @@ def cosg(
 
     n_genes_user:int =50,
     key_added: Optional[str] = None,
+<<<<<<< HEAD
     calculate_logfoldchanges: bool = True,
+=======
+>>>>>>> 55514a16bf1a93c065806f56b111f8a9905c7362
     use_raw: bool = True,
     layer: Optional[str] = None,
     reference: str = 'rest',    
@@ -349,8 +361,11 @@ def cosg(
         The number of genes that appear in the returned tables. The default value is 50.
     key_added
         The key in `adata.uns` information is saved to.
+<<<<<<< HEAD
     calculate_logfoldchanges
         Calculate logfoldchanges.
+=======
+>>>>>>> 55514a16bf1a93c065806f56b111f8a9905c7362
     use_raw
         Use `raw` attribute of `adata` if present.
     layer
@@ -481,6 +496,7 @@ def cosg(
     ### Refer to scanpy
     rank_stats=None
     
+<<<<<<< HEAD
     ### Whether to calculate logfoldchanges, because this is required in scanpy 1.8
     if calculate_logfoldchanges:
         ### Calculate basic stats
@@ -505,6 +521,8 @@ def cosg(
         anndata_obj = _RankGenes(adata, groups_order2, groupby, reference, use_raw, layer, pts)
         anndata_obj._basic_stats()
     
+=======
+>>>>>>> 55514a16bf1a93c065806f56b111f8a9905c7362
     
     ### Refer to Scanpy
     # for correct getnnz calculation
@@ -543,6 +561,7 @@ def cosg(
             rank_stats = pd.DataFrame(columns=idx)
         rank_stats[group_i, 'names'] = adata.var_names[global_indices]
         rank_stats[group_i, 'scores'] = scores[global_indices]
+<<<<<<< HEAD
         
         if calculate_logfoldchanges:
             group_index=np.where(anndata_obj.groups_order==group_i)[0][0]
@@ -573,6 +592,16 @@ def cosg(
         'names': 'O',
         'scores': 'float32',
         }
+=======
+
+        order_i=order_i+1
+            
+    ## Refer to scanpy
+    dtypes = {
+    'names': 'O',
+    'scores': 'float32',
+    }
+>>>>>>> 55514a16bf1a93c065806f56b111f8a9905c7362
     ###
     rank_stats.columns = rank_stats.columns.swaplevel()
     for col in rank_stats.columns.levels[0]:
@@ -580,8 +609,11 @@ def cosg(
     index=False, column_dtypes=dtypes[col]
     )
         
+<<<<<<< HEAD
     
         
+=======
+>>>>>>> 55514a16bf1a93c065806f56b111f8a9905c7362
     print('**finished identifying marker genes by COSG**')
         
     ### Return the result
