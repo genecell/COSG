@@ -5,11 +5,11 @@ from setuptools import setup, find_packages
 
 setup(
     name='cosg',
-    version='1.0.0',
-    description='Marker gene identification for single-cell sequencing data',
+    version='1.0.1',
+    description='Accurate and fast cell marker gene identification with COSG',
     long_description=Path('README.rst').read_text('utf-8'),
-    url='https://github.com/genecell',
-    download_url='https://github.com/genecell',
+    url='https://github.com/genecell/COSG',
+    download_url='https://github.com/genecell/COSG',
     packages=find_packages(exclude=['bin', 'conf', 'data', 'target']),
     install_requires=[
         l.strip() for l in Path('requirements.txt').read_text('utf-8').splitlines()
@@ -17,7 +17,7 @@ setup(
     include_package_data=True,
     author='Min Dai',
     author_email='daimin@zju.edu.cn',
-    license='MIT',
+    license='BSD 3-Clause License',
     classifiers=[
         'Development Status :: 3 - Alpha',
         'Environment :: Console',
