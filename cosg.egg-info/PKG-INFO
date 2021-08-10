@@ -7,7 +7,6 @@ Author: Min Dai
 Author-email: daimin@zju.edu.cn
 License: BSD 3-Clause License
 Download-URL: https://github.com/genecell/COSG
-<<<<<<< HEAD
 Description: |Stars| |PyPI| |Docs| 
         
         .. |Stars| image:: https://img.shields.io/github/stars/genecell/COSG?logo=GitHub&color=yellow
@@ -18,9 +17,6 @@ Description: |Stars| |PyPI| |Docs|
            :target: https://cosg.readthedocs.io
         
         Accurate and fast cell marker gene identification with COSG
-=======
-Description: Accurate and fast cell marker gene identification with COSG
->>>>>>> 55514a16bf1a93c065806f56b111f8a9905c7362
         =======================================================================================================
         
         Overview
