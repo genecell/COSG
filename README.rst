@@ -61,7 +61,7 @@ Draw the dot plot:
    
    sc.tl.dendrogram(adata,groupby=groupby,use_rep='X_pca')
    df_tmp=pd.DataFrame(adata.uns['cosg']['names'][:3,]).T
-   df_tmp=df_tmp.reindex(adata.uns['dendrogram_Leiden']['categories_ordered'])
+   df_tmp=df_tmp.reindex(adata.uns['dendrogram_'+groupby]['categories_ordered'])
    marker_genes_list={idx: list(row.values) for idx, row in df_tmp.iterrows()}
    sc.pl.dotplot(adata, marker_genes_list,
                 groupby=groupby,              
