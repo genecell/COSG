@@ -63,6 +63,8 @@ Draw the dot plot:
    df_tmp=pd.DataFrame(adata.uns['cosg']['names'][:3,]).T
    df_tmp=df_tmp.reindex(adata.uns['dendrogram_'+groupby]['categories_ordered'])
    marker_genes_list={idx: list(row.values) for idx, row in df_tmp.iterrows()}
+   marker_genes_list = {k: v for k, v in marker_genes_list.items() if not any(isinstance(x, float) for x in v)}
+   
    sc.pl.dotplot(adata, marker_genes_list,
                 groupby=groupby,              
                 dendrogram=True,
@@ -84,6 +86,7 @@ You could also check the COSG scores:
    
    marker_gene_scores=pd.DataFrame(adata.uns['cosg']['scores'])
    marker_gene_scores.head()
+
 
 
 Citation
