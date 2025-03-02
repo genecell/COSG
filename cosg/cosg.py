@@ -32,6 +32,311 @@ def _select_top_n(scores, n_top):
     global_indices = reference_indices[partition][partial_indices]
     return global_indices
 
+import numpy as np
+from scipy.sparse import csr_matrix
+from sklearn.metrics.pairwise import cosine_similarity
+
+
+def cosg(
+    adata,
+    groupby = 'CellTypes',
+    groups: Union[Literal['all'], Iterable[str]] = 'all',
+    mu:float=1,
+    remove_lowly_expressed: bool= False,
+    expressed_pct: Optional[float] = 0.1,
+    n_genes_user: int = 50,
+    key_added: Optional[str] = None,
+    calculate_logfoldchanges: bool = False,
+    use_raw: bool = True,
+    layer: Optional[str] = None,
+    reference: str = 'rest',
+    return_by_group : bool = False,
+    verbosity: int = 0,
+    copy: bool = False
+):
+    """\
+    Marker gene identification for single-cell sequencing data using COSG.
+    
+    Parameters
+    ----------
+    adata
+        Annotated data matrix. Note: input paramters are simliar to the parameters used for scanpy's rank_genes_groups() function.
+    groupby
+        The key of the cell groups in .obs, the default value is set to 'CellTypes'.
+    groups
+        Subset of cell groups, e.g. [`'g1'`, `'g2'`, `'g3'`], to which comparison shall be restricted. The default value is 'all', and all groups will be compared.
+    mu
+        The penalty restricting marker genes expressing in non-target cell groups. Larger value represents more strict restrictions. mu should be >= 0, and by default, mu = 1.
+    remove_lowly_expressed
+        If True, genes that express a percentage of target cells smaller than a specific value (`expressed_pct`) are not considered as marker genes for the target cells. The default value is False.
+    expressed_pct
+        When `remove_lowly_expressed` is set to True, genes that express a percentage of target cells smaller than a specific value (`expressed_pct`) are not considered as marker genes for the target cells. The default value for `expressed_pct`
+        is 0.1 (10%).
+    n_genes_user
+        The number of genes that appear in the returned tables. The default value is 50.
+    key_added
+        The key in `adata.uns` information is saved to.
+    calculate_logfoldchanges
+        Calculate logfoldchanges.
+    use_raw
+        Use `raw` attribute of `adata` if present.
+    layer
+        Key from `adata.layers` whose value will be used to perform tests on.
+    reference
+        If `'rest'`, compare each group to the union of the rest of the group.
+        If a group identifier, compare with respect to this group.
+    return_by_group
+        Whether return the COSG scores summarized by each group. This will output another extra copy of the results.
+    verbosity
+        Controls the verbosity of logging messages, defaults to 0.
+    copy
+        If True, returns a copy of `adata` with the computed embeddings instead of modifying in place. Defaults to False.
+ 
+    Returns
+    -------
+    names : structured `np.ndarray` (`.uns['rank_genes_groups']`)
+        Structured array to be indexed by group id storing the gene names. Ordered according to scores.
+    scores : structured `np.ndarray` (`.uns['rank_genes_groups']`)
+        Structured array to be indexed by group id storing COSG scores for each gene for each
+        group. Ordered according to scores.
+    
+    Examples
+    --------
+    >>> import cosg as cosg
+    >>> import scanpy as sc
+    >>> adata = sc.datasets.pbmc68k_reduced()
+    >>> cosg.cosg(adata, key_added='cosg', groupby='bulk_labels')
+    >>> sc.pl.rank_genes_groups(adata, key='cosg')
+    """
+    
+    adata = adata.copy() if copy else adata
+        
+    if layer is not None:
+        if use_raw:
+            raise ValueError("Cannot specify `layer` and have `use_raw = True`.")
+        cellxgene = adata.layers[layer]
+    else:
+        if use_raw and adata.raw is not None:
+             cellxgene = adata.raw.X
+        cellxgene = adata.X
+    
+    
+    ### Refer to scanpy's framework
+    # https://github.com/theislab/scanpy/blob/5533b644e796379fd146bf8e659fd49f92f718cd/scanpy/tools/_rank_genes_groups.py#L559
+    if key_added is None:
+        key_added = 'rank_genes_groups'
+    adata.uns[key_added] = {}
+    adata.uns[key_added]['params'] = dict(
+        groupby=groupby,
+        reference=reference,
+        groups=groups,
+        method='cosg',
+        use_raw=use_raw,
+        layer=layer,
+    )
+    
+    ### Refer to: https://github.com/theislab/scanpy/blob/5533b644e796379fd146bf8e659fd49f92f718cd/scanpy/tools/_rank_genes_groups.py#L543
+    if groups == 'all':
+        ### group lable for each cell
+        group_info=adata.obs[groupby]
+    elif isinstance(groups, (str, int)):
+        raise ValueError('Specify a sequence of groups')
+    else:
+        cells_selected=adata.obs[groupby].isin(groups)
+        cells_selected=cells_selected.values
+        if sparse.issparse(cellxgene):
+            cellxgene=cellxgene[cells_selected]
+        else:
+            cellxgene=cellxgene[cells_selected,:]
+            
+            
+
+        ### group lable for each cell
+        group_info=adata.obs[groupby].copy()
+        group_info=group_info[cells_selected]
+        
+
+    
+    groups_order=np.unique(group_info)
+    n_cluster=len(groups_order)
+    
+    n_cell=cellxgene.shape[0]
+    
+    ### Efficiently create a sparse matrix for the cluster_mat matrix
+    group_to_row = {group: i for i, group in enumerate(groups_order)}
+    row_indices = np.array([group_to_row[group] for group in group_info])
+    col_indices = np.arange(n_cell)
+    data = np.ones_like(col_indices, dtype=int)
+    cluster_mat = csr_matrix((data, (row_indices, col_indices)), shape=(n_cluster, n_cell))
+    
+    if sparse.issparse(cellxgene):
+        ### the dimension is: Gene x lambda
+        cosine_sim=cosine_similarity(X=cellxgene.T,Y=cluster_mat,dense_output=False) 
+        
+        ### Instead of using cosine_sim.multiply(cosine_sim), the following commands could keep the nonzero values order the same, which would be very useful for the downstream analysis
+        ### Because all the calculation would be performed in 1D then
+        genexlambda=cosine_sim.copy()
+        genexlambda.data=np.multiply(genexlambda.data, genexlambda.data)
+        #cosine_sim_data = cosine_sim.data  # Direct access to non-zero elements
+        e_power2_sum = np.array(genexlambda.sum(axis=1)).flatten()  # Row-wise sum as a dense array
+        if mu==1:
+            ### The np.diff(cosine_sim.indptr) is cool because np.diff(genexlambda.indptr) gives the number of non-zero elements per row
+            ### this avoids generating a large dense matrix and subseting it
+            ### as the .data will list all the nonzero values row by row, so every values are in the same order
+            ### add this basically gives the number of times (in an order, from pos 0 to pos N) to repreat for each element in the array
+            genexlambda.data = genexlambda.data / np.repeat(e_power2_sum, np.diff(genexlambda.indptr))
+        else:
+            genexlambda.data=genexlambda.data/((1 - mu) * genexlambda.data + mu * np.repeat(e_power2_sum, np.diff(genexlambda.indptr)))
+        ### Because I use genexlambda.data=np.multiply(genexlambda.data, genexlambda.data), so the nonzero values order are the same
+        genexlambda.data=np.multiply(genexlambda.data,cosine_sim.data)
+    
+    ### If the cellxgene is not a sparse matrix
+    else:
+        ### Convert to dense matrix
+        cluster_mat=cluster_mat.toarray()
+        
+        ## Not using sparse matrix    
+        cosine_sim=cosine_similarity(X=cellxgene.T, Y=cluster_mat, dense_output=True) 
+
+        pos_nonzero=cosine_sim!=0
+        e_power2=np.multiply(cosine_sim,cosine_sim)
+        e_power2_sum=np.sum(e_power2,axis=1)
+        e_power2[pos_nonzero]=np.true_divide(e_power2[pos_nonzero],(1-mu)*e_power2[pos_nonzero]+mu*(np.dot(e_power2_sum.reshape(e_power2_sum.shape[0],1),np.repeat(1,e_power2.shape[1]).reshape(1,e_power2.shape[1]))[pos_nonzero]))
+        e_power2[pos_nonzero]=np.multiply(e_power2[pos_nonzero],cosine_sim[pos_nonzero])
+        genexlambda=e_power2
+
+    ### Refer to scanpy
+    rank_stats=None
+    
+    ### Whether to calculate logfoldchanges, because this is required in scanpy 1.8
+    if calculate_logfoldchanges:
+        ### Calculate basic stats
+        ### Refer to Scanpy
+        # for clarity, rename variable
+        if groups == 'all':
+            groups_order2 = 'all'
+        elif isinstance(groups, (str, int)):
+            raise ValueError('Specify a sequence of groups')
+        else:
+            groups_order2 = list(groups)
+            if isinstance(groups_order2[0], int):
+                groups_order2 = [str(n) for n in groups_order2]
+            if reference != 'rest' and reference not in set(groups_order2):
+                groups_order2 += [reference]
+        if reference != 'rest' and reference not in adata.obs[groupby].cat.categories:
+            cats = adata.obs[groupby].cat.categories.tolist()
+            raise ValueError(
+                f'reference = {reference} needs to be one of groupby = {cats}.'
+            )
+        pts=False
+        anndata_obj = _RankGenes(adata, groups_order2, groupby, reference, use_raw, layer, pts)
+        anndata_obj._basic_stats()
+    
+    
+    ### Refer to Scanpy
+    # for correct getnnz calculation
+    ### get non-zeros for columns
+    if sparse.issparse(cellxgene):
+        cellxgene.eliminate_zeros()
+    if sparse.issparse(cellxgene):
+        get_nonzeros = lambda X: X.getnnz(axis=0)
+    else:
+        get_nonzeros = lambda X: np.count_nonzero(X, axis=0)
+    
+    
+    order_i=0
+    for group_i in groups_order:    
+        idx_i=group_info==group_i 
+
+        ### Convert to numpy array
+        idx_i=idx_i.values
+
+        ## Compare the most ideal case to the worst case
+        if sparse.issparse(cellxgene):
+            scores=genexlambda[:,order_i].toarray()[:,0] ###Changed .A to .toarray() for future support
+        else:
+            scores=genexlambda[:,order_i]
+
+        
+        ### Mask these genes expressed in less than 3 cells in the cluster of interest
+        if remove_lowly_expressed:
+            n_cells_expressed=get_nonzeros(cellxgene[idx_i])
+            n_cells_i=np.sum(idx_i)
+            scores[n_cells_expressed<n_cells_i*expressed_pct]= -1
+
+        global_indices = _select_top_n(scores, n_genes_user)
+
+        # if rank_stats is None:
+        #     idx = pd.MultiIndex.from_tuples([(group_i,'names')])
+        #     rank_stats = pd.DataFrame(columns=idx)
+        # rank_stats[group_i, 'names'] = adata.var_names[global_indices]
+        # rank_stats[group_i, 'scores'] = scores[global_indices]
+            
+            
+        # Initialize the DataFrame if rank_stats is None
+        if rank_stats is None:
+            rank_stats = pd.DataFrame()
+
+        # Prepare data for new columns
+        columns_data = {
+            (group_i, 'names'): adata.var_names.values[global_indices],
+            (group_i, 'scores'): scores[global_indices]
+        }
+        
+        if calculate_logfoldchanges:
+            group_index = np.where(anndata_obj.groups_order == group_i)[0][0]
+            if anndata_obj.means is not None:
+                mean_group = anndata_obj.means[group_index]
+                mean_rest = (
+                    anndata_obj.means_rest[group_index]
+                    if anndata_obj.ireference is None
+                    else anndata_obj.means[anndata_obj.ireference]
+                )
+                foldchanges = (anndata_obj.expm1_func(mean_group) + 1e-9) / (
+                    anndata_obj.expm1_func(mean_rest) + 1e-9
+                )  # Avoid division by zero
+                columns_data[(group_i, 'logfoldchanges')] = np.log2(foldchanges[global_indices])
+
+
+        # Create a new DataFrame for the current group
+        new_data = pd.DataFrame(columns_data)
+
+        # Concatenate with rank_stats
+        rank_stats = pd.concat([rank_stats, new_data], axis=1)
+    
+        order_i=order_i+1
+    
+    #### also return a copy of the results showing the results by group
+    if return_by_group:
+        adata.uns[key_added]['COSG']=rank_stats
+    
+    
+    ## Refer to scanpy
+    dtypes = {
+            'names': 'O',
+            'scores': 'float32',
+            'logfoldchanges': 'float32',
+    }
+    
+    rank_stats.columns = rank_stats.columns.swaplevel()
+    for col in rank_stats.columns.levels[0]:
+        adata.uns[key_added][col]=rank_stats[col].to_records(
+            index=False, column_dtypes=dtypes[col]
+        )
+        
+    if verbosity>0:    
+        print('**Finished identifying marker genes by COSG**')
+        
+    ### Return the result
+    return adata if copy else None
+
+
+
+
+
+
+
+
 
 ### Import from Scanpy
 from scipy.sparse import issparse
@@ -308,281 +613,3 @@ class _RankGenes:
                 # deleting the next line causes a memory leak for some reason
                 del X_rest
 
-        
-def cosg(
-    adata,
-    groupby='CellTypes',
-    groups: Union[Literal['all'], Iterable[str]] = 'all',
-
-    mu=1,
-    remove_lowly_expressed:bool=False,
-    expressed_pct:Optional[float] = 0.1,
-
-    n_genes_user:int =50,
-    key_added: Optional[str] = None,
-    calculate_logfoldchanges: bool = True,
-    use_raw: bool = True,
-    layer: Optional[str] = None,
-    reference: str = 'rest',    
-
-    copy:bool=False
-):
-    """\
-    Marker gene identification for single-cell sequencing data using COSG.
-    
-    Parameters
-    ----------
-    adata
-        Annotated data matrix. Note: input paramters are simliar to the parameters used for scanpy's rank_genes_groups() function.
-    groupby
-        The key of the cell groups in .obs, the default value is set to 'CellTypes'.
-    groups
-        Subset of cell groups, e.g. [`'g1'`, `'g2'`, `'g3'`], to which comparison shall be restricted. The default value is 'all', and all groups will be compared.
-    mu
-        The penalty restricting marker genes expressing in non-target cell groups. Larger value represents more strict restrictions. mu should be >= 0, and by default, mu = 1.
-    remove_lowly_expressed
-        If True, genes that express a percentage of target cells smaller than a specific value (`expressed_pct`) are not considered as marker genes for the target cells. The default value is False.
-    expressed_pct
-        When `remove_lowly_expressed` is set to True, genes that express a percentage of target cells smaller than a specific value (`expressed_pct`) are not considered as marker genes for the target cells. The default value for `expressed_pct`
-        is 0.1 (10%).
-    n_genes_user
-        The number of genes that appear in the returned tables. The default value is 50.
-    key_added
-        The key in `adata.uns` information is saved to.
-    calculate_logfoldchanges
-        Calculate logfoldchanges.
-    use_raw
-        Use `raw` attribute of `adata` if present.
-    layer
-        Key from `adata.layers` whose value will be used to perform tests on.
-    reference
-        If `'rest'`, compare each group to the union of the rest of the group.
-        If a group identifier, compare with respect to this group.
- 
-    Returns
-    -------
-    names : structured `np.ndarray` (`.uns['rank_genes_groups']`)
-        Structured array to be indexed by group id storing the gene names. Ordered according to scores.
-    scores : structured `np.ndarray` (`.uns['rank_genes_groups']`)
-        Structured array to be indexed by group id storing COSG scores for each gene for each
-        group. Ordered according to scores.
-    Notes
-    -----
-    Contact: Min Dai, daimin@zju.edu.cn
-    Examples
-    --------
-    >>> import cosg as cosg
-    >>> import scanpy as sc
-    >>> adata = sc.datasets.pbmc68k_reduced()
-    >>> cosg.cosg(adata, key_added='cosg', groupby='bulk_labels')
-    >>> sc.pl.rank_genes_groups(adata, key='cosg')
-    """
-    
-    adata = adata.copy() if copy else adata
-        
-    if layer is not None:
-        if use_raw:
-            raise ValueError("Cannot specify `layer` and have `use_raw=True`.")
-        cellxgene = adata.layers[layer]
-    else:
-        if use_raw and adata.raw is not None:
-             cellxgene = adata.raw.X
-        cellxgene = adata.X
-    
-    
-    ### Refer to scanpy's framework
-    # https://github.com/theislab/scanpy/blob/5533b644e796379fd146bf8e659fd49f92f718cd/scanpy/tools/_rank_genes_groups.py#L559
-    if key_added is None:
-        key_added = 'rank_genes_groups'
-    adata.uns[key_added] = {}
-    adata.uns[key_added]['params'] = dict(
-    groupby=groupby,
-    reference=reference,
-    groups=groups,
-    method='cosg',
-    use_raw=use_raw,
-    layer=layer,
-    )
-    
-    ### Refer to: https://github.com/theislab/scanpy/blob/5533b644e796379fd146bf8e659fd49f92f718cd/scanpy/tools/_rank_genes_groups.py#L543
-    if groups == 'all':
-        ### group lable for each cell
-        group_info=adata.obs[groupby]
-    elif isinstance(groups, (str, int)):
-        raise ValueError('Specify a sequence of groups')
-    else:
-        cells_selected=adata.obs[groupby].isin(groups)
-        cells_selected=cells_selected.values
-        if sparse.issparse(cellxgene):
-            cellxgene=cellxgene[cells_selected]
-        else:
-            cellxgene=cellxgene[cells_selected,:]
-            
-            
-
-        ### group lable for each cell
-        group_info=adata.obs[groupby].copy()
-        group_info=group_info[cells_selected]
-        
-
-    
-    groups_order=np.unique(group_info)
-    n_cluster=len(groups_order)
-    
-    n_cell=cellxgene.shape[0]
-    cluster_mat=np.zeros(shape=(n_cluster,n_cell))
-
-    ### To further restrict expression in other clusters, can think about a better way, such as taking the cluster similarities into consideration
-    order_i=0
-    for group_i in groups_order:    
-        idx_i=group_info==group_i 
-        cluster_mat[order_i,:][idx_i]=1
-        order_i=order_i+1
-    
-    if sparse.issparse(cellxgene):
-        ### Convert to sparse matrix
-        from scipy.sparse import csr_matrix
-        cluster_mat=csr_matrix(cluster_mat)
-
-        from sklearn.metrics.pairwise import cosine_similarity
-
-        ### the dimension is: Gene x lambda
-        cosine_sim=cosine_similarity(X=cellxgene.T,Y=cluster_mat,dense_output=False) 
-
-        pos_nonzero=cosine_sim.nonzero()
-        genexlambda=cosine_sim.multiply(cosine_sim)
-
-        e_power2_sum=genexlambda.sum(axis=1)
-
-
-        if mu==1:
-            genexlambda[pos_nonzero]=genexlambda[pos_nonzero]/(np.repeat(e_power2_sum,genexlambda.shape[1],axis=1)[pos_nonzero])
-                                                    
-        else:
-            genexlambda[pos_nonzero]=genexlambda[pos_nonzero]/((1-mu)*genexlambda[pos_nonzero]+
-                                                     mu*(
-                                                        np.repeat(e_power2_sum,genexlambda.shape[1],axis=1)[pos_nonzero])
-                                                    )
-        genexlambda[pos_nonzero]=np.multiply(genexlambda[pos_nonzero],cosine_sim[pos_nonzero])
-    
-    ### If the cellxgene is not a sparse matrix
-    else:
-         ## Not using sparse matrix
-        from sklearn.metrics.pairwise import cosine_similarity    
-        cosine_sim=cosine_similarity(X=cellxgene.T,Y=cluster_mat,dense_output=True) 
-
-        pos_nonzero=cosine_sim!=0
-        e_power2=np.multiply(cosine_sim,cosine_sim)
-        e_power2_sum=np.sum(e_power2,axis=1)
-        e_power2[pos_nonzero]=np.true_divide(e_power2[pos_nonzero],(1-mu)*e_power2[pos_nonzero]+mu*(np.dot(e_power2_sum.reshape(e_power2_sum.shape[0],1),np.repeat(1,e_power2.shape[1]).reshape(1,e_power2.shape[1]))[pos_nonzero]))
-        e_power2[pos_nonzero]=np.multiply(e_power2[pos_nonzero],cosine_sim[pos_nonzero])
-        genexlambda=e_power2
-
-    ### Refer to scanpy
-    rank_stats=None
-    
-    ### Whether to calculate logfoldchanges, because this is required in scanpy 1.8
-    if calculate_logfoldchanges:
-        ### Calculate basic stats
-        ### Refer to Scanpy
-        # for clarity, rename variable
-        if groups == 'all':
-            groups_order2 = 'all'
-        elif isinstance(groups, (str, int)):
-            raise ValueError('Specify a sequence of groups')
-        else:
-            groups_order2 = list(groups)
-            if isinstance(groups_order2[0], int):
-                groups_order2 = [str(n) for n in groups_order2]
-            if reference != 'rest' and reference not in set(groups_order2):
-                groups_order2 += [reference]
-        if reference != 'rest' and reference not in adata.obs[groupby].cat.categories:
-            cats = adata.obs[groupby].cat.categories.tolist()
-            raise ValueError(
-                f'reference = {reference} needs to be one of groupby = {cats}.'
-            )
-        pts=False
-        anndata_obj = _RankGenes(adata, groups_order2, groupby, reference, use_raw, layer, pts)
-        anndata_obj._basic_stats()
-    
-    
-    ### Refer to Scanpy
-    # for correct getnnz calculation
-    ### get non-zeros for columns
-    if sparse.issparse(cellxgene):
-        cellxgene.eliminate_zeros()
-    if sparse.issparse(cellxgene):
-        get_nonzeros = lambda X: X.getnnz(axis=0)
-    else:
-        get_nonzeros = lambda X: np.count_nonzero(X, axis=0)
-    
-    order_i=0
-    for group_i in groups_order:    
-        idx_i=group_info==group_i 
-
-        ### Convert to numpy array
-        idx_i=idx_i.values
-
-        ## Compare the most ideal case to the worst case
-        if sparse.issparse(cellxgene):
-            scores=genexlambda[:,order_i].toarray()[:,0]
-        else:
-            scores=genexlambda[:,order_i]
-
-        
-        ### Mask these genes expressed in less than 3 cells in the cluster of interest
-        if remove_lowly_expressed:
-            n_cells_expressed=get_nonzeros(cellxgene[idx_i])
-            n_cells_i=np.sum(idx_i)
-            scores[n_cells_expressed<n_cells_i*expressed_pct]= -1
-
-        global_indices = _select_top_n(scores, n_genes_user)
-
-        if rank_stats is None:
-            idx = pd.MultiIndex.from_tuples([(group_i,'names')])
-            rank_stats = pd.DataFrame(columns=idx)
-        rank_stats[group_i, 'names'] = adata.var_names[global_indices]
-        rank_stats[group_i, 'scores'] = scores[global_indices]
-        
-        if calculate_logfoldchanges:
-            group_index=np.where(anndata_obj.groups_order==group_i)[0][0]
-            if anndata_obj.means is not None:
-                mean_group = anndata_obj.means[group_index]
-                if anndata_obj.ireference is None:
-                    mean_rest = anndata_obj.means_rest[group_index]
-                else:
-                    mean_rest = anndata_obj.means[anndata_obj.ireference]
-                foldchanges = (anndata_obj.expm1_func(mean_group) + 1e-9) / (
-                    anndata_obj.expm1_func(mean_rest) + 1e-9
-                )  # add small value to remove 0's
-                rank_stats[group_i, 'logfoldchanges'] = np.log2(
-                    foldchanges[global_indices]
-                )
-    
-        order_i=order_i+1
-            
-    ## Refer to scanpy
-    if calculate_logfoldchanges:
-        dtypes = {
-        'names': 'O',
-        'scores': 'float32',
-        'logfoldchanges': 'float32',
-        }
-    else:
-        dtypes = {
-        'names': 'O',
-        'scores': 'float32',
-        }
-    ###
-    rank_stats.columns = rank_stats.columns.swaplevel()
-    for col in rank_stats.columns.levels[0]:
-        adata.uns[key_added][col]=rank_stats[col].to_records(
-    index=False, column_dtypes=dtypes[col]
-    )
-        
-    
-        
-    print('**finished identifying marker genes by COSG**')
-        
-    ### Return the result
-    return adata if copy else None
