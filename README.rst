@@ -24,7 +24,7 @@ COSG is a cosine similarity-based method for more accurate and scalable marker g
 
 The method and benchmarking results are described in `Dai et al., (2022)`_. Additionally, the R version of COSG is available `here <https://github.com/genecell/COSGR>`_.
 
-Note: we have recently released our python toolkit, `PIASO <https://github.com/genecell/PIASO>`_, in which some methods were built upon COSG, please try out our new toolkit!
+Note: we have recently released our python toolkit, `PIASO <https://github.com/genecell/PIASO>`_, in which some methods were built upon COSG, please try out PIASO, thank you!
 
 Documentation
 --------------
