@@ -12,7 +12,7 @@
  :target: https://pepy.tech/project/cosg
 
 Accurate and fast cell marker gene identification with COSG
-=======================================================================================================
+=============================================================
 
 Overview
 ---------
@@ -30,14 +30,25 @@ Documentation
 --------------
 The documentation for COSG is available `here <https://cosg.readthedocs.io/en/latest/>`_.
 
+
 Tutorial
 ---------
 
 The `COSG tutorial <https://nbviewer.jupyter.org/github/genecell/COSG/blob/main/tutorials/COSG-tutorial.ipynb>`_ provides a quick-start guide for using COSG and demonstrates the superior performance of COSG as compared with other methods, and the `Jupyter notebook <https://github.com/genecell/COSG/blob/main/tutorials/COSG-tutorial.ipynb>`_ is also available.
 
-Question
----------
-For questions about the code and tutorial, please contact Min Dai, dai@broadinstitute.org.
+
+Installation
+------------
+Stable version:
+.. code-block:: bash
+
+   pip install cosg
+
+Development version:
+.. code-block:: bash   
+
+   pip install git+https://github.com/genecell/COSG.git
+
 
 Example
 ---------
@@ -94,6 +105,10 @@ You could also check the COSG scores:
    marker_gene_scores=pd.DataFrame(adata.uns['cosg']['scores'])
    marker_gene_scores.head()
 
+
+Question
+---------
+For questions about the code and tutorial, please contact Min Dai, dai@broadinstitute.org.
 
 
 Citation
