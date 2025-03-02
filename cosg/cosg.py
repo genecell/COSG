@@ -333,7 +333,106 @@ def cosg(
 
 
 
+import pandas as pd
 
+def indexByGene(
+    df: pd.DataFrame,
+    gene_key: str = "names",
+    score_key: str = "scores",
+    set_nan_to_zero: bool= False,
+    convert_negative_one_to_zero: bool = True
+):
+    """
+    Reshapes a DataFrame with MultiIndex columns where gene names are under the specified key 
+    and scores are under the corresponding key. The resulting DataFrame will have gene names as the index 
+    and scores for each cell type in separate columns.
+
+    Note
+    ----
+    This function is designed for reindexing COSG's output stored in `adata.uns['cosg']['COSG']`. 
+    It is recommended to set `n_genes_user=adata.n_vars` when calling the `cosg.cosg` function to ensure 
+    that scores for all genes are returned.
+    
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Input DataFrame with MultiIndex columns.
+    gene_key : str, optional, default="names"
+        The key used for gene names in the first level of MultiIndex.
+    score_key : str, optional, default="scores"
+        The key used for scores in the first level of MultiIndex.
+    set_nan_to_zero : bool, optional, default=False
+        If True, replaces all NaN values in the resulting DataFrame with 0.
+        Set this parameter to True if `n_genes_user=adata.n_vars` is not set when calling the `cosg.cosg` function.
+    convert_negative_one_to_zero : bool, optional, default=True
+        If True, replaces all occurrences of -1.0 in the resulting DataFrame with 0.
+
+
+    Returns
+    -------
+    pd.DataFrame
+        Reshaped DataFrame with genes as index and scores per cell type.
+        
+    
+    Raises
+    ------
+    TypeError
+        If the input df is not a pandas DataFrame.
+    ValueError
+        If the input DataFrame does not have MultiIndex columns with at least two levels,
+        or if the specified gene_key or score_key is not found in the first level of the columns.
+        
+    Example
+    -------
+    >>> cosg_df = indexByGene(
+    ...     adata.uns['cosg']['COSG'],
+    ...     gene_key="names",
+    ...     score_key="scores",
+    ...     set_nan_to_zero=True,
+    ...     convert_negative_one_to_zero=True
+    ... )
+    >>>  ### Check the reindexed data frame
+    >>> cosg_df.head()
+    """
+    
+    # Validate input type
+    if not isinstance(df, pd.DataFrame):
+        raise TypeError("The input df must be a pandas DataFrame.")
+
+    # Validate that columns are a MultiIndex with at least two levels
+    if not isinstance(df.columns, pd.MultiIndex) or len(df.columns.levels) < 2:
+        raise ValueError("The input DataFrame must have MultiIndex columns with at least two levels.")
+
+    # Validate that gene_key and score_key are present in the first level of the MultiIndex
+    if gene_key not in df.columns.get_level_values(0):
+        raise ValueError(f"The gene_key '{gene_key}' is not present in the first level of the DataFrame columns.")
+    if score_key not in df.columns.get_level_values(0):
+        raise ValueError(f"The score_key '{score_key}' is not present in the first level of the DataFrame columns.")
+    
+    # Extract unique cell types from the second level of the MultiIndex
+    cell_types = df.columns.get_level_values(1).unique()
+
+    # Get all unique gene names across cell types using the gene_key column
+    all_genes = pd.concat([df[(gene_key, ct)] for ct in cell_types]).unique()
+    
+    df_scores = pd.DataFrame(index=all_genes)
+
+    # Assign scores to the corresponding gene names
+    for ct in cell_types:
+        scores_series = df.set_index((gene_key, ct))[(score_key, ct)]
+        # Reindex the scores_series to align with all_genes
+        df_scores[ct] = scores_series.reindex(df_scores.index)
+    
+
+    # Optionally replace NaN values with 0 if set_nan_to_zero is True
+    if set_nan_to_zero and df_scores.isnull().values.any():
+        df_scores.fillna(0, inplace=True)
+        
+    # Optionally replace -1.0 values with 0
+    if convert_negative_one_to_zero:
+        df_scores = df_scores.replace(-1.0, 0)
+
+    return df_scores
 
 
 

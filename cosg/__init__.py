@@ -1,1 +1,1 @@
-from .cosg import *
+from .cosg import cosg, indexByGene
