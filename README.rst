@@ -39,13 +39,11 @@ The `COSG tutorial <https://nbviewer.jupyter.org/github/genecell/COSG/blob/main/
 
 Installation
 ------------
-Stable version:
-.. code-block:: bash
+Stable version::
 
    pip install cosg
 
-Development version:
-.. code-block:: bash   
+Development version::
 
    pip install git+https://github.com/genecell/COSG.git
 
