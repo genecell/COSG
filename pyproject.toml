@@ -1,0 +1,61 @@
+[build-system]
+build-backend = "hatchling.build"
+requires = ["hatchling"]
+
+[project]
+name = "cosg"
+version = "1.0.1"
+description = "Accurate and fast cell marker gene identification with COSG"
+requires-python = ">=3.6"
+license = { text = "BSD-3-Clause" }
+authors = [
+    { name = "Min Dai", email = "dai@broadinstitute.org" }
+]
+maintainers = [
+    { name = "Min Dai", email = "dai@broadinstitute.org" }
+]
+readme = "README.rst"
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Framework :: Jupyter",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Natural Language :: English",
+    "Operating System :: MacOS :: MacOS X",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.6",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+    "Topic :: Scientific/Engineering :: Visualization",
+]
+
+dependencies = [
+    "anndata>=0.7.4",
+    "numpy>=1.17.0",
+    "pandas>=0.21",
+    "scanpy>=1.6.0",
+    "scikit-learn>=0.21.2",
+    "scipy>=1.4"
+]
+
+# Project URLs
+[project.urls]
+Documentation = "https://cosg.readthedocs.io/en/latest/"
+Source = "https://github.com/genecell/COSG"
+Homepage = "https://github.com/genecell/COSG"
+
+[project.optional-dependencies]
+dev = [
+    "pre-commit"  # Static checking
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["cosg"]
