@@ -4,7 +4,7 @@ requires = ["hatchling"]
 
 [project]
 name = "cosg"
-version = "1.0.1"
+version = "1.0.2"
 description = "Accurate and fast cell marker gene identification with COSG"
 requires-python = ">=3.6"
 license = { text = "BSD-3-Clause" }
