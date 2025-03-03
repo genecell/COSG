@@ -435,6 +435,84 @@ def indexByGene(
     return df_scores
 
 
+import numpy as np
+import pandas as pd
+
+def iqrLogNormalize(
+    df: pd.DataFrame,
+    q_upper: float = 0.95,
+    q_lower: float = 0.75
+):
+    """
+    Applies an IQR-based scaling to a DataFrame followed by a log1p transformation.
+    
+    The function computes the interquartile range (IQR) for each column as the difference 
+    between the q_upper and q_lower quantiles. Each column is then divided by its respective IQR.
+    
+    If any IQR value is zero, it is replaced with the smallest nonzero IQR found among all columns.
+    If all IQR values are zero, a replacement value of 1e-6 is used.
+    
+    Optionally, the log1p-transformed result can be further scaled using min–max normalization 
+    to rescale the values to the [0, 1] range (applied per column).
+    
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Input DataFrame containing numerical values.
+    q_upper : float, optional, default=0.95
+        The upper quantile used for IQR calculation.
+    q_lower : float, optional, default=0.75
+        The lower quantile used for IQR calculation.
+      
+    Returns
+    -------
+    pd.DataFrame
+        A DataFrame with the same shape as the input containing the IQR-scaled and log1p-transformed values.
+    
+    Raises
+    ------
+    TypeError
+        If the input df is not a pandas DataFrame.
+    ValueError
+        If q_lower is not in the range [0, q_upper) or if q_upper is not in (q_lower, 1].
+    
+    Example
+    -------
+    >>> ## cosg_df is a DataFrame with gene scores, output from the cosg.indexByGene function
+    >>> cosg_df_transformed = iqr_log_normalize(cosg_df, q_upper=0.95, q_lower=0.75)
+    """
+    # Validate input type
+    if not isinstance(df, pd.DataFrame):
+        raise TypeError("The input df must be a pandas DataFrame.")
+    
+    # Validate quantile parameters
+    if not (0 <= q_lower < q_upper <= 1):
+        raise ValueError("q_lower must be >= 0 and less than q_upper, and q_upper must be <= 1.")
+    
+    # Compute the IQR for each column
+    iqr = df.quantile(q_upper) - df.quantile(q_lower)
+    
+    # Replace zero IQR values with the smallest nonzero IQR (or 1e-6 if all are zero)
+    if (iqr == 0).any():
+        nonzero_iqr = iqr[iqr > 0]
+        replacement_value = nonzero_iqr.min() if not nonzero_iqr.empty else 1e-6
+        iqr = iqr.replace(0, replacement_value)
+    
+    # Scale the DataFrame by dividing each column by its corresponding IQR
+    df_iqr_scaled = df / iqr
+    
+    # Apply the log1p transformation
+    df_log_transformed = np.log1p(df_iqr_scaled)
+
+    return df_log_transformed
+
+
+
+
+#############
+########
+####
+###
 
 
 ### Import from Scanpy
