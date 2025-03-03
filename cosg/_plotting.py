@@ -456,47 +456,6 @@ def plotMarkerDendrogram(
                         G.add_node(ct, node_type='cell_type')
                         G.add_edge(root, ct)
     
-    # # --- Build tree graph ---
-    # G = nx.DiGraph()
-    # if collapse_threshold is None:
-    #     # Full binary dendrogram branch
-    #     for ct in cell_types:
-    #         G.add_node(ct, node_type='cell_type')
-    #     for i, row in enumerate(Z):
-    #         left_idx, right_idx = int(row[0]), int(row[1])
-    #         internal_node = f"internal_{i+N}"
-    #         G.add_node(internal_node, node_type='internal')
-    #         left_node = cell_types[left_idx] if left_idx < N else f"internal_{left_idx}"
-    #         right_node = cell_types[right_idx] if right_idx < N else f"internal_{right_idx}"
-    #         G.add_edge(internal_node, left_node)
-    #         G.add_edge(internal_node, right_node)
-    #     root = f"internal_{2*N - 2}"
-    # else:
-    #     from collections import defaultdict
-    #     cluster_labels = fcluster(Z, t=collapse_threshold, criterion='distance')
-    #     unique_clusters = np.unique(cluster_labels)
-    #     root = "root"
-    #     G.add_node(root, node_type='root')
-    #     clusters = defaultdict(list)
-    #     for ct, lbl in zip(cell_types, cluster_labels):
-    #         clusters[lbl].append(ct)
-    #     if len(unique_clusters) == 1:
-    #         for ct in clusters[unique_clusters[0]]:
-    #             G.add_node(ct, node_type='cell_type')
-    #             G.add_edge(root, ct)
-    #     else:
-    #         for lbl, members in clusters.items():
-    #             if len(members) > 1:
-    #                 cluster_node = f"cluster_{lbl}"
-    #                 G.add_node(cluster_node, node_type='cluster')
-    #                 G.add_edge(root, cluster_node)
-    #                 for ct in members:
-    #                     G.add_node(ct, node_type='cell_type')
-    #                     G.add_edge(cluster_node, ct)
-    #             else:
-    #                 ct = members[0]
-    #                 G.add_node(ct, node_type='cell_type')
-    #                 G.add_edge(root, ct)
     
     
     # Extract top N marker genes for all cell types at once
@@ -647,27 +606,13 @@ def plotMarkerDendrogram(
         ax=ax_main
     )
     
-    
-    
-    
-    # nx.draw_networkx_nodes(
-    #     G, pos,
-    #     nodelist=list(G.nodes()),
-    #     node_color=[node_colors[n] for n in G.nodes()],
-    #     node_size=[node_sizes[n] for n in G.nodes()],
-    #     node_shape=[node_shapes[n] for n in G.nodes()],
-    #     ax=ax_main
-    # )
+   
     
     
     ### Draw edges:
     nx.draw_networkx_edges(G, pos, ax=ax_main, arrows=False)
     
-    ### Plot the cell type labels
-    # cell_type_labels = {n: n for n, d in G.nodes(data=True) if d.get('node_type') == 'cell_type'}
-    # ct_texts = nx.draw_networkx_labels(G, pos, labels=cell_type_labels, font_size=10, ax=ax_main)
-    # for t in ct_texts.values():
-    #     t.set_path_effects([PathEffects.withStroke(linewidth=font_outline, foreground='white')])
+
     
     ### Plot the labels
     for n, d in G.nodes(data=True):
@@ -725,14 +670,6 @@ def plotMarkerDendrogram(
     # Move the label to the left side of the colorbar
     cbar.set_label("COSG Score", fontsize=12, rotation=270, labelpad=15, ha='center')
     
-    # # --- Dot size legend for marker gene nodes ---
-    # # Example percentages for the legend:
-    # percentages = [10, 30, 50, 70, 90]
-    # legend_markers = [
-    #     plt.Line2D([0], [0], marker='o', color='black', label=f'{p}%', 
-    #                markerfacecolor='white', markersize=np.sqrt(gene_size_scale * (p/100)))
-    #     for p in percentages
-    # ]
     
     ### Calculate the dot size dynamically
     min_expr = gene_expr_percentage[gene_expr_percentage > 0].min().min()  # Ignore 0% values
@@ -763,18 +700,7 @@ def plotMarkerDendrogram(
     
     # ax_main.set_title("Radial Dendrogram of Cell Types with Top Marker Genes", fontsize=12)
     ax_main.axis('off')
-    # plt.show()
-    
-#     ### Whether to show the figure or not
-#     if show_figure:
-#         plt.show()
-    
-#     ### Save the figure
-#     if save:
-#         fig.savefig(save, bbox_inches='tight')   # save the figure to file
-#         print("Figure saved to: ", save)
-#         plt.close(fig)    # close the figure window   
-        
+
         
     ### Whether to show the figure or not
     if show_figure:
