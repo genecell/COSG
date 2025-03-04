@@ -11,22 +11,6 @@ from scipy.sparse import issparse
 from .cosg import indexByGene, iqrLogNormalize
 
 
-import pandas as pd
-import numpy as np
-from scipy.sparse import issparse, csc_matrix
-
-import pandas as pd
-import numpy as np
-from scipy.sparse import issparse
-
-import pandas as pd
-import numpy as np
-from scipy.sparse import issparse
-
-import pandas as pd
-import numpy as np
-from scipy.sparse import issparse
-
 def _compute_gene_expression_percentage(adata, group_by, cosg_score_df, layer=None):
     """
     Computes the percentage of cells expressing genes in `cosg_score_df` within each cell type group.

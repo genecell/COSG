@@ -50,7 +50,7 @@ def cosg(
     use_raw: bool = True,
     layer: Optional[str] = None,
     reference: str = 'rest',
-    return_by_group : bool = False,
+    return_by_group : bool = True,
     verbosity: int = 0,
     copy: bool = False
 ):
@@ -86,7 +86,7 @@ def cosg(
         If `'rest'`, compare each group to the union of the rest of the group.
         If a group identifier, compare with respect to this group.
     return_by_group
-        Whether return the COSG scores summarized by each group. This will output another extra copy of the results.
+        Whether return the COSG scores summarized by each group. This will output another extra copy of the results. Defaults to True.
     verbosity
         Controls the verbosity of logging messages, defaults to 0.
     copy
@@ -130,9 +130,10 @@ def cosg(
         groupby=groupby,
         reference=reference,
         groups=groups,
-        method='cosg',
+        method='COSG',
         use_raw=use_raw,
         layer=layer,
+        mu=mu,
     )
     
     ### Refer to: https://github.com/theislab/scanpy/blob/5533b644e796379fd146bf8e659fd49f92f718cd/scanpy/tools/_rank_genes_groups.py#L543
@@ -325,12 +326,10 @@ def cosg(
         )
         
     if verbosity>0:    
-        print('**Finished identifying marker genes by COSG**')
+        print(f"Finished identifying marker genes by COSG, and the results are in adata.uns['{key_added}'].")
         
     ### Return the result
     return adata if copy else None
-
-
 
 
 import pandas as pd
