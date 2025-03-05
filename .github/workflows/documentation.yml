@@ -31,7 +31,8 @@ jobs:
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
-          git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/genecell/COSG.git       
+          git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/genecell/COSG.git  
+          cp -R ./docs/build/* ./docs/     
           git add ./docs/
           git commit -m "Deploy documentation" || echo "No changes to commit"
-          git push origin main  
+          git push origin main   
