@@ -106,10 +106,9 @@ def cosg(
         The function stores the COSG marker gene identification results in `adata.uns[key_added]` (if `copy` is False)
         or returns a modified copy of `adata` (if `copy` is True). The results include structured arrays containing 
         gene names and their corresponding COSG scores for each cell group:
-
-            names : structured `np.ndarray` (`.uns['cosg']`)
-                Structured array to be indexed by group id storing the gene names. Ordered according to scores.
-            scores : structured `np.ndarray` (`.uns['cosg']`)
+        names : structured `np.ndarray` (`.uns['cosg']`)
+            Structured array to be indexed by group id storing the gene names. Ordered according to scores.
+        scores : structured `np.ndarray` (`.uns['cosg']`)
             Structured array to be indexed by group id storing COSG scores for each gene for each
                 group. Ordered according to scores.
         The marker genes and their COSG scores are also summarized and stored separately by group in
