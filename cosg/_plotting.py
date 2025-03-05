@@ -1,3 +1,5 @@
+from .cosg import indexByGene, iqrLogNormalize
+
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -8,9 +10,8 @@ from scipy.spatial.distance import pdist
 import matplotlib.patheffects as PathEffects
 from scipy.sparse import issparse
 
-from .cosg import indexByGene, iqrLogNormalize
 
-
+## Helper function
 def _compute_gene_expression_percentage(adata, group_by, cosg_score_df, layer=None):
     """
     Computes the percentage of cells expressing genes in `cosg_score_df` within each cell type group.
@@ -699,3 +700,161 @@ def plotMarkerDendrogram(
         plt.close(fig)  # Close the figure if not showing or saving
    
     
+### packaged dotplot function in COSG
+import pandas as pd
+import scanpy as sc
+
+def plotMarkerDotplot(
+    adata,
+    groupby,
+    top_n_genes: int = 3,
+    use_rep: str = 'X_pca',
+    layer: str = None,
+    key_cosg: str = 'cosg',
+    swap_axes: bool = False,
+    standard_scale: str = 'var',
+    cmap: str = 'Spectral_r',
+    save: str = None,
+    **dotplot_kwargs
+):
+    """
+    Generate a dot plot of top marker genes identified by COSG.
+
+    The function computes the cell cluster ordering using a dendrogram (if `use_rep` is provided)
+    or derives it from `adata.obs[groupby]`, extracts the top marker genes identified by COSG, 
+    and plots a dotplot using Scanpy's `sc.pl.dotplot`.
+
+    Parameters
+    ----------
+    adata
+        Annotated data object that includes COSG results.
+    groupby : str
+        The cell group key in `adata.obs`, should match with the `groupby` parameter used in COSG.
+    top_n_genes : int, optional (default: 3)
+        The number of top marker genes to show for each group.
+    use_rep : str, optional (default: 'X_pca')
+        The cell low-dimensional representation key (e.g., PCA, UMAP) in `adata.obsm` used to compute the dendrogram.
+    layer : str or None, optional
+        The layer key to use for expression values in the dotplot (default: None).
+    key_cosg : str, optional (default: 'cosg')
+        The key in `adata.uns` where COSG results are stored.
+    swap_axes : bool, optional (default: False)
+        Whether to swap axes in the dot plot.
+    standard_scale : str or None, optional
+        Whether to standardize expression values across `'var'` (genes) or `'group'` (cell groups or clusters).
+        Can be `'var'`, `'group'`, or `None` (default: `'var'`).
+    cmap : str, optional (default: 'Spectral_r')
+        The colormap used for the dot plot.
+    save : str or None, optional
+        If provided, saves the plot to a file. The filename should include an extension (e.g., `"cosg_markers.pdf"`).
+    **dotplot_kwargs : dict
+        Additional keyword arguments to pass to `sc.pl.dotplot`.
+
+    Returns
+    -------
+    None
+        Displays the dot plot.
+
+    Raises
+    ------
+    ValueError
+        If required COSG results or dendrogram information are missing, or if the provided `groupby`
+        does not match the one stored in COSG parameters.
+
+    Example
+    -------
+    >>> import scanpy as sc
+    >>> import cosg  # Assuming plotDotPlot is part of the cosg package
+    >>> adata = sc.datasets.pbmc68k_reduced()
+    >>> # Using a specific low-dimensional representation for dendrogram computation and cell type ordering:
+    >>> cosg.plotMarkerDotplot(
+    ...     adata,
+    ...     groupby='bulk_labels',
+    ...     top_n_genes=3,
+    ...     key_cosg='cosg',
+    ...     use_rep='X_pca',
+    ...     swap_axes=False,
+    ...     standard_scale='var',
+    ...     cmap='Spectral_r'
+    ... )
+    >>> # Deriving cell order from adata.obs when use_rep is None:
+    >>> cosg.plotMarkerDotplot(
+    ...     adata,
+    ...     groupby='bulk_labels',
+    ...     top_n_genes=3,
+    ...     key_cosg='cosg',
+    ...     use_rep=None,
+    ...     swap_axes=False,
+    ...     standard_scale='var',
+    ...     cmap='Spectral_r'
+    ... )
+    """
+    
+    # Check that COSG results are available in adata.uns using the specified key.
+    if key_cosg not in adata.uns or 'names' not in adata.uns[key_cosg]:
+        raise ValueError(f"COSG results not found in `adata.uns['{key_cosg}']['names']`.")
+    
+    # Check that the provided groupby matches the one stored in COSG parameters.
+    if 'params' not in adata.uns[key_cosg] or 'groupby' not in adata.uns[key_cosg]['params']:
+        raise ValueError(
+            f"The COSG results in `adata.uns['{key_cosg}']` do not contain a 'groupby' parameter in 'params'."
+        )
+    if adata.uns[key_cosg]['params']['groupby'] != groupby:
+        raise ValueError(
+            f"Provided groupby '{groupby}' does not match the groupby used in COSG results "
+            f"('{adata.uns[key_cosg]['params']['groupby']}')."
+        )
+
+    
+    # Set the dendrogram key
+    dendro_key = 'dendrogram_' + groupby
+
+    # Compute dendrogram or derive ordering based on use_rep
+    if use_rep is not None:
+        # Temporarily suppress scanpy verbosity
+        original_verbosity = sc.settings.verbosity
+        sc.settings.verbosity = 0  # Suppress messages
+        try:
+            sc.tl.dendrogram(adata, groupby=groupby, use_rep=use_rep)
+        finally:
+            sc.settings.verbosity = original_verbosity  # Restore original verbosity
+
+
+        if dendro_key not in adata.uns or 'categories_ordered' not in adata.uns[dendro_key]:
+            raise ValueError(
+                f"Dendrogram results for groupby='{groupby}' not found in "
+                f"`adata.uns['{dendro_key}']['categories_ordered']`."
+            )
+        ordering = adata.uns[dendro_key]['categories_ordered']
+    else:
+        # Derive ordering locally from adata.obs[groupby] without writing to adata.uns.
+        if hasattr(adata.obs[groupby], "cat"):
+            ordering = list(adata.obs[groupby].cat.categories)
+        else:
+            ordering = sorted(adata.obs[groupby].unique())
+        
+    # Extract the top_n_genes marker genes for each group from the COSG results.
+    df_tmp = pd.DataFrame(adata.uns[key_cosg]['names'][:top_n_genes,]).T
+
+    # Reorder rows based on the derived ordering.
+    df_tmp = df_tmp.reindex(ordering)
+
+    # Convert the DataFrame rows to a dictionary of marker genes per group.
+    marker_genes_list = {idx: list(row.values) for idx, row in df_tmp.iterrows()}
+    marker_genes_list = {k: v for k, v in marker_genes_list.items() if not any(isinstance(x, float) for x in v)}
+
+    # Enable dendrogram only if use_rep is provided
+    use_dendrogram = use_rep is not None  
+    # Generate and display the dot plot with the provided parameters.
+    sc.pl.dotplot(
+        adata,
+        marker_genes_list,
+        groupby=groupby,
+        layer=layer,
+        dendrogram=use_dendrogram,
+        swap_axes=swap_axes,
+        standard_scale=standard_scale,
+        cmap=cmap,
+        save=save,
+        **dotplot_kwargs
+    )
