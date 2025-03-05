@@ -1,0 +1,2915 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Marker gene identification with COSG &#8212; COSG v1.0.2 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=362ab14a" />
+    <link rel="stylesheet" type="text/css" href="../_static/nbsphinx-code-cells.css?v=2aa19091" />
+    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=0330b353" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../_static/documentation_options.js?v=e562d664"></script>
+    <script src="../_static/doctools.js?v=9a2dae69"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+    <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'notebooks/20_COSG_tutorial';</script>
+    <script src="../_static/sidebar_toggle.js?v=3b053ec6"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Tutorial at first release (v1.0.1)" href="COSG-tutorial.html" />
+    <link rel="prev" title="Tutorials" href="../tutorials.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class=" navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../_static/COSG_logo.png" class="logo__image only-light" alt="COSG v1.0.2 documentation - Home"/>
+    <img src="../_static/COSG_logo.png" class="logo__image only-dark pst-js-only" alt="COSG v1.0.2 documentation - Home"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class=" navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../installation.html">
+    Installation
+  </a>
+</li>
+
+
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="../tutorials.html">
+    Tutorials
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../modules.html">
+    API
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../references.html">
+    References
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../releaseNotes.html">
+    Release notes
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/genecell/COSG" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../installation.html">
+    Installation
+  </a>
+</li>
+
+
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="../tutorials.html">
+    Tutorials
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../modules.html">
+    API
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../references.html">
+    References
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../releaseNotes.html">
+    Release notes
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/genecell/COSG" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<h3><a href="../index.html">Table of Contents</a></h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../tutorials.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../modules.html">API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../references.html">References</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../releaseNotes.html">Release notes</a></li>
+</ul>
+</div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../tutorials.html" class="nav-link">Tutorials</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">Marker gene identification with COSG</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="Marker-gene-identification-with-COSG">
+<h1>Marker gene identification with COSG<a class="headerlink" href="#Marker-gene-identification-with-COSG" title="Link to this heading">#</a></h1>
+<section id="Setting-basics">
+<h2>Setting basics<a class="headerlink" href="#Setting-basics" title="Link to this heading">#</a></h2>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>import numpy as np
+import pandas as pd
+import scanpy as sc
+sc.set_figure_params(dpi=80,dpi_save=300, color_map=&#39;Spectral_r&#39;,facecolor=&#39;white&#39;)
+from matplotlib import rcParams
+# To modify the default figure size, use rcParams.
+rcParams[&#39;figure.figsize&#39;] = 4, 4
+rcParams[&#39;font.sans-serif&#39;] = &quot;Arial&quot;
+rcParams[&#39;font.family&#39;] = &quot;Arial&quot;
+sc.settings.verbosity = 3
+sc.logging.print_header()
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+scanpy==1.9.1 anndata==0.8.0 umap==0.5.3 numpy==1.21.6 scipy==1.7.3 pandas==1.4.4 scikit-learn==1.1.2 statsmodels==0.13.2 python-igraph==0.10.4 louvain==0.7.1 pynndescent==0.5.11
+</pre></div></div>
+</div>
+</section>
+<section id="Setting-colors">
+<h2>Setting colors<a class="headerlink" href="#Setting-colors" title="Link to this heading">#</a></h2>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>### Palette
+scane_color=[&quot;#e6194b&quot;,&quot;#3cb44b&quot;,&quot;#ffe119&quot;,
+&quot;#4363d8&quot;,&quot;#f58231&quot;,&quot;#911eb4&quot;,
+&quot;#46f0f0&quot;,&quot;#f032e6&quot;,&quot;#bcf60c&quot;,
+&quot;#fabebe&quot;,&quot;#008080&quot;,&quot;#e6beff&quot;,
+&quot;#9a6324&quot;,
+             &quot;#800000&quot;,
+&quot;#aaffc3&quot;,&quot;#808000&quot;,&quot;#ffd8b1&quot;,
+&quot;#000075&quot;,&quot;#808080&quot;
+            ]
+import seaborn as sns
+self_palette2=sns.color_palette(np.hstack((scane_color,sc.pl.palettes.godsnot_102)))
+
+# https://matplotlib.org/3.1.0/tutorials/colors/colormap-manipulation.html#sphx-glr-tutorials-colors-colormap-manipulation-py
+# # https://gree2.github.io/python/2015/05/06/python-seaborn-tutorial-choosing-color-palettes
+from matplotlib import cm
+from matplotlib import colors, colorbar
+cmap_own = cm.get_cmap(&#39;magma_r&#39;, 256)
+newcolors = cmap_own(np.linspace(0,0.75 , 256))
+Greys = cm.get_cmap(&#39;Greys_r&#39;, 256)
+newcolors[:10, :] = Greys(np.linspace(0.8125, 0.8725, 10))
+pos_cmap = colors.ListedColormap(newcolors)
+di_cmap=sns.diverging_palette(138,359,s=72,l=50,sep=27,n=15,as_cmap=True)
+</pre></div>
+</div>
+</div>
+</section>
+<section id="Setting-paths">
+<h2>Setting paths<a class="headerlink" href="#Setting-paths" title="Link to this heading">#</a></h2>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>save_dir=&#39;/n/scratch/users/m/mid166/Result/single-cell/Methods/COSG/COSG_tutorial&#39;
+sc.settings.figdir = save_dir
+prefix=&#39;COSG_tutorial_SEA-AD&#39;
+import os
+if not os.path.exists(save_dir):
+    os.makedirs(save_dir)
+sc.set_figure_params(dpi=80,dpi_save=300, color_map=&#39;viridis&#39;,facecolor=&#39;white&#39;)
+rcParams[&#39;figure.figsize&#39;] = 4, 4
+</pre></div>
+</div>
+</div>
+<section id="Load-the-data">
+<h3>Load the data<a class="headerlink" href="#Load-the-data" title="Link to this heading">#</a></h3>
+<p>The 20k subsampled snRNA-seq data from Allen SEA-AD project is available in google drive: <a class="reference external" href="https://drive.google.com/file/d/1nH-CRaTQFxJ5pAVpy8_hUQn1nrIcakq2/view?usp=drive_link">https://drive.google.com/file/d/1nH-CRaTQFxJ5pAVpy8_hUQn1nrIcakq2/view?usp=drive_link</a>.</p>
+<p>The original data is available in <a class="reference external" href="https://portal.brain-map.org/explore/seattle-alzheimers-disease">https://portal.brain-map.org/explore/seattle-alzheimers-disease</a>.</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>mkdir -p /n/scratch/users/m/mid166/Result/single-cell/Enhancer/SEA-AD/
+cd /n/scratch/users/m/mid166/Result/single-cell/Enhancer/SEA-AD/
+gdrive files download 1nH-CRaTQFxJ5pAVpy8_hUQn1nrIcakq2
+</pre></div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>adata=sc.read(&#39;/n/scratch/users/m/mid166/Result/single-cell/Enhancer/SEA-AD/SEA-AD_RNA_MTG_subsample_excludeReference_20k_piaso.h5ad&#39;)
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>adata.shape
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+(20000, 36601)
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>sc.pl.embedding(adata,
+            basis=&#39;X_umap&#39;,
+           color=[&#39;Subclass&#39;],
+           palette=self_palette2,
+           legend_fontoutline=2,
+           legend_fontweight=5,
+           cmap=&#39;Spectral_r&#39;,
+           ncols=3,
+           size=10,
+           frameon=False)
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/notebooks_20_COSG_tutorial_12_0.png" class="no-scaled-link" src="../_images/notebooks_20_COSG_tutorial_12_0.png" style="width: 521px; height: 278px;" />
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>sc.pl.embedding(adata,
+    basis=&#39;X_umap&#39;,
+    color=[&#39;Subclass&#39;],
+    palette=self_palette2,
+    legend_fontoutline=2,
+    legend_fontsize=7,
+    legend_fontweight=5,
+    legend_loc=&#39;on data&#39;,
+    cmap=&#39;Spectral_r&#39;,
+    ncols=3,
+    size=10,
+    frameon=False)
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/notebooks_20_COSG_tutorial_13_0.png" class="no-scaled-link" src="../_images/notebooks_20_COSG_tutorial_13_0.png" style="width: 265px; height: 277px;" />
+</div>
+</div>
+<p>The data is normalized, and the raw UMI counts were saved in <code class="docutils literal notranslate"><span class="pre">adata.layers['UMIs']</span></code>:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>adata.X.data
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+array([0.8813792 , 2.510722  , 0.8813792 , ..., 0.37347588, 0.37347588,
+       1.1829159 ], dtype=float32)
+</pre></div></div>
+</div>
+</section>
+<section id="Import-COSG">
+<h3>Import COSG<a class="headerlink" href="#Import-COSG" title="Link to this heading">#</a></h3>
+<p>Install the latest version of COSG via <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">git+https://github.com/genecell/COSG.git</span></code> from <a class="github reference external" href="https://github.com/genecell/COSG">genecell/COSG</a>:</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>import cosg
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>%%time
+groupby=&#39;Subclass&#39;
+cosg.cosg(adata,
+    key_added=&#39;cosg&#39;,
+    # use_raw=False, layer=&#39;log1p&#39;, ## e.g., if you want to use the log1p layer in adata
+    mu=100,
+    expressed_pct=0.1,
+    remove_lowly_expressed=True,
+    n_genes_user=adata.n_vars, ### Use all the genes, to enable the calculation of transformed COSG scores
+    # n_genes_user=100,
+    groupby=groupby,
+    return_by_group=True,
+    verbosity=1
+)
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Finished identifying marker genes by COSG, and the results are in adata.uns[&#39;cosg&#39;].
+CPU times: user 7.92 s, sys: 3.15 s, total: 11.1 s
+Wall time: 11.1 s
+</pre></div></div>
+</div>
+<p>Let’s visualize the top marker genes identified by COSG with dotplot. There are two ways to build a dendrogram, one with <code class="docutils literal notranslate"><span class="pre">use_rep</span></code> and one using the category orders in <code class="docutils literal notranslate"><span class="pre">adata.obs[groupby]</span></code>.</p>
+<p>Here is the dotplot using the low-dimensional cell representations specified by <code class="docutils literal notranslate"><span class="pre">use_rep</span></code>:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>cosg.plotMarkerDotplot(
+    adata,
+    groupby=&#39;Subclass&#39;,
+    top_n_genes=3,
+    key_cosg=&#39;cosg&#39;,
+    use_rep=&#39;X_scVI&#39;,
+    swap_axes=False,
+    standard_scale=&#39;var&#39;,
+    cmap=&#39;Spectral_r&#39;,
+    # save=&#39;test.pdf&#39;
+)
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/notebooks_20_COSG_tutorial_21_0.png" class="no-scaled-link" src="../_images/notebooks_20_COSG_tutorial_21_0.png" style="width: 1933px; height: 750px;" />
+</div>
+</div>
+<p>Use the category orders in <code class="docutils literal notranslate"><span class="pre">adata.obs[groupby]</span></code>:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[12]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>cosg.plotMarkerDotplot(
+    adata,
+    groupby=&#39;Subclass&#39;,
+    top_n_genes=3,
+    key_cosg=&#39;cosg&#39;,
+    use_rep=None,
+    swap_axes=False,
+    standard_scale=&#39;var&#39;,
+    cmap=&#39;Spectral_r&#39;,
+    # save=&#39;test.pdf&#39;
+)
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/notebooks_20_COSG_tutorial_23_0.png" class="no-scaled-link" src="../_images/notebooks_20_COSG_tutorial_23_0.png" style="width: 1883px; height: 750px;" />
+</div>
+</div>
+<p>Check the top marker genes:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[13]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>pd.DataFrame(adata.uns[&#39;cosg&#39;][&#39;names&#39;]).head()
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[13]:
+</pre></div>
+</div>
+<div class="output_area rendered_html docutils container">
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Lamp5 Lhx6</th>
+      <th>Lamp5</th>
+      <th>Pax6</th>
+      <th>Sncg</th>
+      <th>Vip</th>
+      <th>Sst Chodl</th>
+      <th>Sst</th>
+      <th>Pvalb</th>
+      <th>Chandelier</th>
+      <th>L2/3 IT</th>
+      <th>...</th>
+      <th>L6 CT</th>
+      <th>L6b</th>
+      <th>L6 IT Car3</th>
+      <th>L5/6 NP</th>
+      <th>Astrocyte</th>
+      <th>OPC</th>
+      <th>Oligodendrocyte</th>
+      <th>Endothelial</th>
+      <th>VLMC</th>
+      <th>Microglia-PVM</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>SFTA3</td>
+      <td>LINC02520</td>
+      <td>AC006305.1</td>
+      <td>AC004014.1</td>
+      <td>VIP</td>
+      <td>NPY</td>
+      <td>AC113347.4</td>
+      <td>MEPE</td>
+      <td>AC106874.1</td>
+      <td>LINC00507</td>
+      <td>...</td>
+      <td>CLPSL1</td>
+      <td>AL499602.1</td>
+      <td>SMYD1</td>
+      <td>CD200R1L</td>
+      <td>ETNPPL</td>
+      <td>GPR17</td>
+      <td>LINC01608</td>
+      <td>CLDN5</td>
+      <td>COL1A2</td>
+      <td>PTPRC</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>NKX2-1</td>
+      <td>SCNN1G</td>
+      <td>LINC01162</td>
+      <td>AC091576.1</td>
+      <td>CHRNA2</td>
+      <td>TMEM114</td>
+      <td>NMU</td>
+      <td>AC093765.2</td>
+      <td>NOG</td>
+      <td>LINC01484</td>
+      <td>...</td>
+      <td>AC073968.2</td>
+      <td>RASEF</td>
+      <td>SMIM32</td>
+      <td>AC084167.1</td>
+      <td>PRDM16</td>
+      <td>BEST3</td>
+      <td>MOG</td>
+      <td>MYCT1</td>
+      <td>FOXD1</td>
+      <td>FYB1</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>LINC01344</td>
+      <td>KIT</td>
+      <td>LINC01539</td>
+      <td>AC073316.1</td>
+      <td>LINC01705</td>
+      <td>CORT</td>
+      <td>C8orf87</td>
+      <td>MYO5B</td>
+      <td>LINC00943</td>
+      <td>CNGB1</td>
+      <td>...</td>
+      <td>SMIM36</td>
+      <td>SLITRK6</td>
+      <td>AC010401.1</td>
+      <td>NPSR1-AS1</td>
+      <td>SLC39A12</td>
+      <td>AC004852.2</td>
+      <td>FOLH1</td>
+      <td>TGM2</td>
+      <td>TBX18</td>
+      <td>SYK</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>AL355482.1</td>
+      <td>AC099482.2</td>
+      <td>ABCB5</td>
+      <td>AL161629.1</td>
+      <td>AJ006995.1</td>
+      <td>GHRH</td>
+      <td>LINC02133</td>
+      <td>LRRC38</td>
+      <td>AC006065.4</td>
+      <td>AC008574.1</td>
+      <td>...</td>
+      <td>KL</td>
+      <td>SCUBE1</td>
+      <td>AC073225.1</td>
+      <td>LINC02042</td>
+      <td>OBI1-AS1</td>
+      <td>LINC01546</td>
+      <td>CD22</td>
+      <td>SRARP</td>
+      <td>C7</td>
+      <td>IKZF1</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>HCRTR2</td>
+      <td>CPLX3</td>
+      <td>LINC01416</td>
+      <td>AC004862.1</td>
+      <td>NPR3</td>
+      <td>DDC</td>
+      <td>OTOF</td>
+      <td>AC006364.1</td>
+      <td>SCUBE3</td>
+      <td>LINC02714</td>
+      <td>...</td>
+      <td>AC092114.1</td>
+      <td>FIBCD1</td>
+      <td>DCSTAMP</td>
+      <td>NPSR1</td>
+      <td>SLC14A1</td>
+      <td>VCAN-AS1</td>
+      <td>SLCO1A2</td>
+      <td>FENDRR</td>
+      <td>FMO2</td>
+      <td>PIK3R5</td>
+    </tr>
+  </tbody>
+</table>
+<p>5 rows × 24 columns</p>
+</div></div>
+</div>
+<p>Check the corrsponding COSG scores:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[14]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>pd.DataFrame(adata.uns[&#39;cosg&#39;][&#39;scores&#39;]).head()
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[14]:
+</pre></div>
+</div>
+<div class="output_area rendered_html docutils container">
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Lamp5 Lhx6</th>
+      <th>Lamp5</th>
+      <th>Pax6</th>
+      <th>Sncg</th>
+      <th>Vip</th>
+      <th>Sst Chodl</th>
+      <th>Sst</th>
+      <th>Pvalb</th>
+      <th>Chandelier</th>
+      <th>L2/3 IT</th>
+      <th>...</th>
+      <th>L6 CT</th>
+      <th>L6b</th>
+      <th>L6 IT Car3</th>
+      <th>L5/6 NP</th>
+      <th>Astrocyte</th>
+      <th>OPC</th>
+      <th>Oligodendrocyte</th>
+      <th>Endothelial</th>
+      <th>VLMC</th>
+      <th>Microglia-PVM</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>0.292173</td>
+      <td>0.058870</td>
+      <td>0.028365</td>
+      <td>0.068951</td>
+      <td>0.350845</td>
+      <td>0.381491</td>
+      <td>0.095953</td>
+      <td>0.362747</td>
+      <td>0.053039</td>
+      <td>0.527400</td>
+      <td>...</td>
+      <td>0.013717</td>
+      <td>0.105420</td>
+      <td>0.668806</td>
+      <td>0.431743</td>
+      <td>0.767967</td>
+      <td>0.450832</td>
+      <td>0.832948</td>
+      <td>0.801609</td>
+      <td>0.763216</td>
+      <td>0.871644</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>0.231243</td>
+      <td>0.019967</td>
+      <td>0.012673</td>
+      <td>0.068790</td>
+      <td>0.328894</td>
+      <td>0.053314</td>
+      <td>0.049051</td>
+      <td>0.172069</td>
+      <td>0.028827</td>
+      <td>0.482379</td>
+      <td>...</td>
+      <td>0.009300</td>
+      <td>0.068174</td>
+      <td>0.173390</td>
+      <td>0.327094</td>
+      <td>0.763356</td>
+      <td>0.419320</td>
+      <td>0.806407</td>
+      <td>0.573506</td>
+      <td>0.584916</td>
+      <td>0.856651</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>0.026953</td>
+      <td>0.017913</td>
+      <td>0.006920</td>
+      <td>0.019831</td>
+      <td>0.268984</td>
+      <td>0.011365</td>
+      <td>0.021399</td>
+      <td>0.126399</td>
+      <td>0.024365</td>
+      <td>0.317597</td>
+      <td>...</td>
+      <td>0.006055</td>
+      <td>0.067735</td>
+      <td>0.093702</td>
+      <td>0.283468</td>
+      <td>0.725767</td>
+      <td>0.351603</td>
+      <td>0.799328</td>
+      <td>0.571553</td>
+      <td>0.583440</td>
+      <td>0.834092</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>0.013707</td>
+      <td>0.016702</td>
+      <td>0.003892</td>
+      <td>0.016700</td>
+      <td>0.262942</td>
+      <td>0.008558</td>
+      <td>0.020437</td>
+      <td>0.117930</td>
+      <td>0.022924</td>
+      <td>0.264376</td>
+      <td>...</td>
+      <td>0.004044</td>
+      <td>0.040743</td>
+      <td>0.092139</td>
+      <td>0.157058</td>
+      <td>0.698517</td>
+      <td>0.310609</td>
+      <td>0.772911</td>
+      <td>0.567358</td>
+      <td>0.469173</td>
+      <td>0.822119</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>0.011856</td>
+      <td>0.015210</td>
+      <td>0.003594</td>
+      <td>0.012816</td>
+      <td>0.254974</td>
+      <td>0.007424</td>
+      <td>0.013169</td>
+      <td>0.033898</td>
+      <td>0.020663</td>
+      <td>0.204915</td>
+      <td>...</td>
+      <td>0.003518</td>
+      <td>0.025265</td>
+      <td>0.068585</td>
+      <td>0.111516</td>
+      <td>0.687068</td>
+      <td>0.297090</td>
+      <td>0.761675</td>
+      <td>0.554236</td>
+      <td>0.429890</td>
+      <td>0.819302</td>
+    </tr>
+  </tbody>
+</table>
+<p>5 rows × 24 columns</p>
+</div></div>
+</div>
+<p>The COSG results are also saved as a multi-index Pandas dataframe format if you set <code class="docutils literal notranslate"><span class="pre">return_by_group=True</span></code> (by default), and you can access it via:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[15]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>adata.uns[&#39;cosg&#39;][&#39;COSG&#39;].head()
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[15]:
+</pre></div>
+</div>
+<div class="output_area rendered_html docutils container">
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead tr th {
+        text-align: left;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr>
+      <th></th>
+      <th>names</th>
+      <th>scores</th>
+      <th>names</th>
+      <th>scores</th>
+      <th>names</th>
+      <th>scores</th>
+      <th>names</th>
+      <th>scores</th>
+      <th>names</th>
+      <th>scores</th>
+      <th>...</th>
+      <th>names</th>
+      <th>scores</th>
+      <th>names</th>
+      <th>scores</th>
+      <th>names</th>
+      <th>scores</th>
+      <th>names</th>
+      <th>scores</th>
+      <th>names</th>
+      <th>scores</th>
+    </tr>
+    <tr>
+      <th></th>
+      <th>Lamp5 Lhx6</th>
+      <th>Lamp5 Lhx6</th>
+      <th>Lamp5</th>
+      <th>Lamp5</th>
+      <th>Pax6</th>
+      <th>Pax6</th>
+      <th>Sncg</th>
+      <th>Sncg</th>
+      <th>Vip</th>
+      <th>Vip</th>
+      <th>...</th>
+      <th>OPC</th>
+      <th>OPC</th>
+      <th>Oligodendrocyte</th>
+      <th>Oligodendrocyte</th>
+      <th>Endothelial</th>
+      <th>Endothelial</th>
+      <th>VLMC</th>
+      <th>VLMC</th>
+      <th>Microglia-PVM</th>
+      <th>Microglia-PVM</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>SFTA3</td>
+      <td>0.292173</td>
+      <td>LINC02520</td>
+      <td>0.058870</td>
+      <td>AC006305.1</td>
+      <td>0.028365</td>
+      <td>AC004014.1</td>
+      <td>0.068951</td>
+      <td>VIP</td>
+      <td>0.350845</td>
+      <td>...</td>
+      <td>GPR17</td>
+      <td>0.450832</td>
+      <td>LINC01608</td>
+      <td>0.832948</td>
+      <td>CLDN5</td>
+      <td>0.801609</td>
+      <td>COL1A2</td>
+      <td>0.763216</td>
+      <td>PTPRC</td>
+      <td>0.871644</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>NKX2-1</td>
+      <td>0.231243</td>
+      <td>SCNN1G</td>
+      <td>0.019967</td>
+      <td>LINC01162</td>
+      <td>0.012673</td>
+      <td>AC091576.1</td>
+      <td>0.068790</td>
+      <td>CHRNA2</td>
+      <td>0.328894</td>
+      <td>...</td>
+      <td>BEST3</td>
+      <td>0.419320</td>
+      <td>MOG</td>
+      <td>0.806407</td>
+      <td>MYCT1</td>
+      <td>0.573506</td>
+      <td>FOXD1</td>
+      <td>0.584916</td>
+      <td>FYB1</td>
+      <td>0.856651</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>LINC01344</td>
+      <td>0.026953</td>
+      <td>KIT</td>
+      <td>0.017913</td>
+      <td>LINC01539</td>
+      <td>0.006920</td>
+      <td>AC073316.1</td>
+      <td>0.019831</td>
+      <td>LINC01705</td>
+      <td>0.268984</td>
+      <td>...</td>
+      <td>AC004852.2</td>
+      <td>0.351603</td>
+      <td>FOLH1</td>
+      <td>0.799328</td>
+      <td>TGM2</td>
+      <td>0.571553</td>
+      <td>TBX18</td>
+      <td>0.583440</td>
+      <td>SYK</td>
+      <td>0.834092</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>AL355482.1</td>
+      <td>0.013707</td>
+      <td>AC099482.2</td>
+      <td>0.016702</td>
+      <td>ABCB5</td>
+      <td>0.003892</td>
+      <td>AL161629.1</td>
+      <td>0.016700</td>
+      <td>AJ006995.1</td>
+      <td>0.262942</td>
+      <td>...</td>
+      <td>LINC01546</td>
+      <td>0.310609</td>
+      <td>CD22</td>
+      <td>0.772911</td>
+      <td>SRARP</td>
+      <td>0.567358</td>
+      <td>C7</td>
+      <td>0.469173</td>
+      <td>IKZF1</td>
+      <td>0.822119</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>HCRTR2</td>
+      <td>0.011856</td>
+      <td>CPLX3</td>
+      <td>0.015210</td>
+      <td>LINC01416</td>
+      <td>0.003594</td>
+      <td>AC004862.1</td>
+      <td>0.012816</td>
+      <td>NPR3</td>
+      <td>0.254974</td>
+      <td>...</td>
+      <td>VCAN-AS1</td>
+      <td>0.297090</td>
+      <td>SLCO1A2</td>
+      <td>0.761675</td>
+      <td>FENDRR</td>
+      <td>0.554236</td>
+      <td>FMO2</td>
+      <td>0.429890</td>
+      <td>PIK3R5</td>
+      <td>0.819302</td>
+    </tr>
+  </tbody>
+</table>
+<p>5 rows × 48 columns</p>
+</div></div>
+</div>
+<p>Similarly, you could extract the names or scores by:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[16]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>adata.uns[&#39;cosg&#39;][&#39;COSG&#39;][&#39;names&#39;].head()
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[16]:
+</pre></div>
+</div>
+<div class="output_area rendered_html docutils container">
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Lamp5 Lhx6</th>
+      <th>Lamp5</th>
+      <th>Pax6</th>
+      <th>Sncg</th>
+      <th>Vip</th>
+      <th>Sst Chodl</th>
+      <th>Sst</th>
+      <th>Pvalb</th>
+      <th>Chandelier</th>
+      <th>L2/3 IT</th>
+      <th>...</th>
+      <th>L6 CT</th>
+      <th>L6b</th>
+      <th>L6 IT Car3</th>
+      <th>L5/6 NP</th>
+      <th>Astrocyte</th>
+      <th>OPC</th>
+      <th>Oligodendrocyte</th>
+      <th>Endothelial</th>
+      <th>VLMC</th>
+      <th>Microglia-PVM</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>SFTA3</td>
+      <td>LINC02520</td>
+      <td>AC006305.1</td>
+      <td>AC004014.1</td>
+      <td>VIP</td>
+      <td>NPY</td>
+      <td>AC113347.4</td>
+      <td>MEPE</td>
+      <td>AC106874.1</td>
+      <td>LINC00507</td>
+      <td>...</td>
+      <td>CLPSL1</td>
+      <td>AL499602.1</td>
+      <td>SMYD1</td>
+      <td>CD200R1L</td>
+      <td>ETNPPL</td>
+      <td>GPR17</td>
+      <td>LINC01608</td>
+      <td>CLDN5</td>
+      <td>COL1A2</td>
+      <td>PTPRC</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>NKX2-1</td>
+      <td>SCNN1G</td>
+      <td>LINC01162</td>
+      <td>AC091576.1</td>
+      <td>CHRNA2</td>
+      <td>TMEM114</td>
+      <td>NMU</td>
+      <td>AC093765.2</td>
+      <td>NOG</td>
+      <td>LINC01484</td>
+      <td>...</td>
+      <td>AC073968.2</td>
+      <td>RASEF</td>
+      <td>SMIM32</td>
+      <td>AC084167.1</td>
+      <td>PRDM16</td>
+      <td>BEST3</td>
+      <td>MOG</td>
+      <td>MYCT1</td>
+      <td>FOXD1</td>
+      <td>FYB1</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>LINC01344</td>
+      <td>KIT</td>
+      <td>LINC01539</td>
+      <td>AC073316.1</td>
+      <td>LINC01705</td>
+      <td>CORT</td>
+      <td>C8orf87</td>
+      <td>MYO5B</td>
+      <td>LINC00943</td>
+      <td>CNGB1</td>
+      <td>...</td>
+      <td>SMIM36</td>
+      <td>SLITRK6</td>
+      <td>AC010401.1</td>
+      <td>NPSR1-AS1</td>
+      <td>SLC39A12</td>
+      <td>AC004852.2</td>
+      <td>FOLH1</td>
+      <td>TGM2</td>
+      <td>TBX18</td>
+      <td>SYK</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>AL355482.1</td>
+      <td>AC099482.2</td>
+      <td>ABCB5</td>
+      <td>AL161629.1</td>
+      <td>AJ006995.1</td>
+      <td>GHRH</td>
+      <td>LINC02133</td>
+      <td>LRRC38</td>
+      <td>AC006065.4</td>
+      <td>AC008574.1</td>
+      <td>...</td>
+      <td>KL</td>
+      <td>SCUBE1</td>
+      <td>AC073225.1</td>
+      <td>LINC02042</td>
+      <td>OBI1-AS1</td>
+      <td>LINC01546</td>
+      <td>CD22</td>
+      <td>SRARP</td>
+      <td>C7</td>
+      <td>IKZF1</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>HCRTR2</td>
+      <td>CPLX3</td>
+      <td>LINC01416</td>
+      <td>AC004862.1</td>
+      <td>NPR3</td>
+      <td>DDC</td>
+      <td>OTOF</td>
+      <td>AC006364.1</td>
+      <td>SCUBE3</td>
+      <td>LINC02714</td>
+      <td>...</td>
+      <td>AC092114.1</td>
+      <td>FIBCD1</td>
+      <td>DCSTAMP</td>
+      <td>NPSR1</td>
+      <td>SLC14A1</td>
+      <td>VCAN-AS1</td>
+      <td>SLCO1A2</td>
+      <td>FENDRR</td>
+      <td>FMO2</td>
+      <td>PIK3R5</td>
+    </tr>
+  </tbody>
+</table>
+<p>5 rows × 24 columns</p>
+</div></div>
+</div>
+</section>
+<section id="Calculate-normalized-COSG-scores-for-each-gene-across-all-cell-types">
+<h3>Calculate normalized COSG scores for each gene across all cell types<a class="headerlink" href="#Calculate-normalized-COSG-scores-for-each-gene-across-all-cell-types" title="Link to this heading">#</a></h3>
+<p>In addition to COSG scores, the normalized COSG scores (or the transformed COSG scores) can also be calculated to enable cross-cell type comparison of the gene expression specificities. This could also potentially enables the expression specificity comparison across datasets or stuides.</p>
+<p>Note: setting <code class="docutils literal notranslate"><span class="pre">n_genes_user</span> <span class="pre">=</span> <span class="pre">adata.n_vars</span></code> in the <code class="docutils literal notranslate"><span class="pre">cosg.cosg()</span></code> function is required for calculation of normalized COSG scores.</p>
+<p>We firstly reindex the marker gene dataframes by indexing them with the same gene indexes, and the values are the COSG scores in each cell type:</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[17]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>cosg_scores=cosg.indexByGene(
+    adata.uns[&#39;cosg&#39;][&#39;COSG&#39;],
+    # gene_key=&quot;names&quot;, score_key=&quot;scores&quot;,
+    set_nan_to_zero=True,
+    convert_negative_one_to_zero=True
+)
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[18]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>cosg_scores.head()
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[18]:
+</pre></div>
+</div>
+<div class="output_area rendered_html docutils container">
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Lamp5 Lhx6</th>
+      <th>Lamp5</th>
+      <th>Pax6</th>
+      <th>Sncg</th>
+      <th>Vip</th>
+      <th>Sst Chodl</th>
+      <th>Sst</th>
+      <th>Pvalb</th>
+      <th>Chandelier</th>
+      <th>L2/3 IT</th>
+      <th>...</th>
+      <th>L6 CT</th>
+      <th>L6b</th>
+      <th>L6 IT Car3</th>
+      <th>L5/6 NP</th>
+      <th>Astrocyte</th>
+      <th>OPC</th>
+      <th>Oligodendrocyte</th>
+      <th>Endothelial</th>
+      <th>VLMC</th>
+      <th>Microglia-PVM</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>SFTA3</th>
+      <td>0.292173</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.000000</td>
+      <td>...</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+    </tr>
+    <tr>
+      <th>NKX2-1</th>
+      <td>0.231243</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.000000</td>
+      <td>...</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+    </tr>
+    <tr>
+      <th>LINC01344</th>
+      <td>0.026953</td>
+      <td>0.000317</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.000000</td>
+      <td>...</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+    </tr>
+    <tr>
+      <th>AL355482.1</th>
+      <td>0.013707</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.000000</td>
+      <td>...</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+    </tr>
+    <tr>
+      <th>HCRTR2</th>
+      <td>0.011856</td>
+      <td>0.000000</td>
+      <td>0.000058</td>
+      <td>0.000023</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.000028</td>
+      <td>...</td>
+      <td>0.000035</td>
+      <td>0.000153</td>
+      <td>0.000002</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+    </tr>
+  </tbody>
+</table>
+<p>5 rows × 24 columns</p>
+</div></div>
+</div>
+<p>Next, we normalize the COSG scores:</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[19]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>cosg_scores=cosg.iqrLogNormalize(cosg_scores)
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[20]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>cosg_scores.head()
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[20]:
+</pre></div>
+</div>
+<div class="output_area rendered_html docutils container">
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Lamp5 Lhx6</th>
+      <th>Lamp5</th>
+      <th>Pax6</th>
+      <th>Sncg</th>
+      <th>Vip</th>
+      <th>Sst Chodl</th>
+      <th>Sst</th>
+      <th>Pvalb</th>
+      <th>Chandelier</th>
+      <th>L2/3 IT</th>
+      <th>...</th>
+      <th>L6 CT</th>
+      <th>L6b</th>
+      <th>L6 IT Car3</th>
+      <th>L5/6 NP</th>
+      <th>Astrocyte</th>
+      <th>OPC</th>
+      <th>Oligodendrocyte</th>
+      <th>Endothelial</th>
+      <th>VLMC</th>
+      <th>Microglia-PVM</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>SFTA3</th>
+      <td>9.762279</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.000000</td>
+      <td>...</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.00000</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+    </tr>
+    <tr>
+      <th>NKX2-1</th>
+      <td>9.528420</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.000000</td>
+      <td>...</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.00000</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+    </tr>
+    <tr>
+      <th>LINC01344</th>
+      <td>7.379579</td>
+      <td>2.019498</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.000000</td>
+      <td>...</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.00000</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+    </tr>
+    <tr>
+      <th>AL355482.1</th>
+      <td>6.703997</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.000000</td>
+      <td>...</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.00000</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+    </tr>
+    <tr>
+      <th>HCRTR2</th>
+      <td>6.559136</td>
+      <td>0.000000</td>
+      <td>2.468799</td>
+      <td>0.862006</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.017969</td>
+      <td>...</td>
+      <td>1.405817</td>
+      <td>2.548247</td>
+      <td>0.05476</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+    </tr>
+  </tbody>
+</table>
+<p>5 rows × 24 columns</p>
+</div></div>
+</div>
+<p>Let’s check some genes’ normalized scores:</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[21]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>gene_check=np.ravel(pd.DataFrame(adata.uns[&#39;cosg&#39;][&#39;names&#39;])[:1].values.T)[:5]
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[22]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>cosg_scores.loc[gene_check].T.head()
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[22]:
+</pre></div>
+</div>
+<div class="output_area rendered_html docutils container">
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>SFTA3</th>
+      <th>LINC02520</th>
+      <th>AC006305.1</th>
+      <th>AC004014.1</th>
+      <th>VIP</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>Lamp5 Lhx6</th>
+      <td>9.762279</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.00000</td>
+    </tr>
+    <tr>
+      <th>Lamp5</th>
+      <td>0.000000</td>
+      <td>7.103147</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.00000</td>
+    </tr>
+    <tr>
+      <th>Pax6</th>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>8.580213</td>
+      <td>0.000000</td>
+      <td>0.00000</td>
+    </tr>
+    <tr>
+      <th>Sncg</th>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>2.847808</td>
+      <td>8.320658</td>
+      <td>0.00000</td>
+    </tr>
+    <tr>
+      <th>Vip</th>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>7.59415</td>
+    </tr>
+  </tbody>
+</table>
+</div></div>
+</div>
+<p>and here are the COSG scores before normalization, which are not directly comparable across cell types, as they are influenced by the cell numbers and cell cluster similarities, etc.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[23]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>cosg_scores_original=cosg.indexByGene(
+    adata.uns[&#39;cosg&#39;][&#39;COSG&#39;],
+    # gene_key=&quot;names&quot;, score_key=&quot;scores&quot;,
+    set_nan_to_zero=True,
+    convert_negative_one_to_zero=True
+)
+cosg_scores_original.loc[gene_check].T.head()
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[23]:
+</pre></div>
+</div>
+<div class="output_area rendered_html docutils container">
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>SFTA3</th>
+      <th>LINC02520</th>
+      <th>AC006305.1</th>
+      <th>AC004014.1</th>
+      <th>VIP</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>Lamp5 Lhx6</th>
+      <td>0.292173</td>
+      <td>0.00000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+    </tr>
+    <tr>
+      <th>Lamp5</th>
+      <td>0.000000</td>
+      <td>0.05887</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+    </tr>
+    <tr>
+      <th>Pax6</th>
+      <td>0.000000</td>
+      <td>0.00000</td>
+      <td>0.028365</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+    </tr>
+    <tr>
+      <th>Sncg</th>
+      <td>0.000000</td>
+      <td>0.00000</td>
+      <td>0.000273</td>
+      <td>0.068951</td>
+      <td>0.000000</td>
+    </tr>
+    <tr>
+      <th>Vip</th>
+      <td>0.000000</td>
+      <td>0.00000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.350845</td>
+    </tr>
+  </tbody>
+</table>
+</div></div>
+</div>
+</section>
+<section id="Visualizing-the-marker-genes-with-plotMarkerDendrogram">
+<h3>Visualizing the marker genes with plotMarkerDendrogram<a class="headerlink" href="#Visualizing-the-marker-genes-with-plotMarkerDendrogram" title="Link to this heading">#</a></h3>
+<p>COSG provides an intutive visualization with marker gene names, COSG scores and cell cluster similarities:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[24]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>cosg.plotMarkerDendrogram(
+     adata,
+     group_by=&quot;Subclass&quot;,
+     use_rep=&quot;X_scVI&quot;,
+     calculate_dendrogram_on_cosg_scores=False,
+     top_n_genes=3,
+     radius_step=1.5,
+     cmap=&quot;Purples&quot;,
+     gene_label_offset=0.25,
+     gene_label_color=&quot;black&quot;,
+     linkage_method=&quot;ward&quot;,
+     distance_metric=&quot;correlation&quot;,
+     hierarchy_merge_scale=0,
+     # collapse_scale=0.2,
+     add_cluster_node_for_single_node_cluster=True,
+     palette=None,
+     figure_size= (10, 10),
+     # node_shape_cell_type=&#39;o&#39;,
+     # node_shape_gene=&#39;s&#39;,
+     colorbar_width=0.01,
+     gene_color_min=0,
+     gene_color_max=None,
+     show_figure=True,
+     # save=&#39;./markerDendrogram.pdf&#39;,
+)
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/notebooks_20_COSG_tutorial_47_0.png" class="no-scaled-link" src="../_images/notebooks_20_COSG_tutorial_47_0.png" style="width: 675px; height: 587px;" />
+</div>
+</div>
+<p>You could set the gene node colors by <code class="docutils literal notranslate"><span class="pre">cmap</span></code> and merge the hierarchical dendrogram by <code class="docutils literal notranslate"><span class="pre">hierarchy_merge_scale</span></code>. The parameter <code class="docutils literal notranslate"><span class="pre">hierarchy_merge_scale</span></code> (0 to 1) controls merging binary nodes into multi-child nodes based on distance similarity:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[25]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>cosg.plotMarkerDendrogram(
+     adata,
+     group_by=&quot;Subclass&quot;,
+     use_rep=&quot;X_scVI&quot;,
+     calculate_dendrogram_on_cosg_scores=True,
+     top_n_genes=3,
+     radius_step=1.5,
+     cmap=&quot;Spectral_r&quot;,
+     gene_label_offset=0.25,
+     gene_label_color=&quot;black&quot;,
+     linkage_method=&quot;ward&quot;,
+     distance_metric=&quot;correlation&quot;,
+     hierarchy_merge_scale=0.2,
+     # collapse_scale=0.2,
+     add_cluster_node_for_single_node_cluster=True,
+     palette=None,
+     figure_size= (10, 10),
+     # figure_size= (8, 8),
+     # node_shape_cell_type=&#39;o&#39;,
+     # node_shape_gene=&#39;s&#39;,
+     colorbar_width=0.01,
+     gene_color_min=0,
+     gene_color_max=None,
+     show_figure=True,
+     # save=&#39;./markerDendrogram.pdf&#39;,
+)
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/notebooks_20_COSG_tutorial_49_0.png" class="no-scaled-link" src="../_images/notebooks_20_COSG_tutorial_49_0.png" style="width: 650px; height: 624px;" />
+</div>
+</div>
+<p>You could also collapse the dendrogram by setting <code class="docutils literal notranslate"><span class="pre">collapse_scale</span></code> to a value between 0 and 1:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[26]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>cosg.plotMarkerDendrogram(
+     adata,
+     group_by=&quot;Subclass&quot;,
+     use_rep=&quot;X_scVI&quot;,
+     calculate_dendrogram_on_cosg_scores=True,
+     top_n_genes=3,
+     radius_step=1.5,
+     cmap=&quot;Purples&quot;,
+     gene_label_offset=0.25,
+     gene_label_color=&quot;black&quot;,
+     linkage_method=&quot;ward&quot;,
+     distance_metric=&quot;correlation&quot;,
+     hierarchy_merge_scale=0,
+     collapse_scale=0.2,
+     add_cluster_node_for_single_node_cluster=True,
+     palette=None,
+     figure_size= (10, 10),
+     # node_shape_cell_type=&#39;o&#39;,
+     # node_shape_gene=&#39;s&#39;,
+     colorbar_width=0.01,
+     gene_color_min=0,
+     gene_color_max=None,
+     show_figure=True,
+     # save=&#39;./markerDendrogram.pdf&#39;,
+)
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/notebooks_20_COSG_tutorial_51_0.png" class="no-scaled-link" src="../_images/notebooks_20_COSG_tutorial_51_0.png" style="width: 675px; height: 624px;" />
+</div>
+</div>
+<p>The parameter <code class="docutils literal notranslate"><span class="pre">collapse_scale</span></code> controls the clustering resolution of cell types, larger values lead to more clusters:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[27]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>cosg.plotMarkerDendrogram(
+     adata,
+     group_by=&quot;Subclass&quot;,
+     use_rep=&quot;X_scVI&quot;,
+     calculate_dendrogram_on_cosg_scores=True,
+     top_n_genes=3,
+     radius_step=1.5,
+     cmap=&quot;Purples&quot;,
+     gene_label_offset=0.25,
+     gene_label_color=&quot;black&quot;,
+     linkage_method=&quot;ward&quot;,
+     distance_metric=&quot;correlation&quot;,
+     hierarchy_merge_scale=0,
+     collapse_scale=0.8,
+     add_cluster_node_for_single_node_cluster=True,
+     palette=None,
+     figure_size= (10, 10),
+     # node_shape_cell_type=&#39;o&#39;,
+     # node_shape_gene=&#39;s&#39;,
+     colorbar_width=0.01,
+     gene_color_min=0,
+     gene_color_max=None,
+     show_figure=True,
+     # save=&#39;./markerDendrogram.pdf&#39;,
+)
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/notebooks_20_COSG_tutorial_53_0.png" class="no-scaled-link" src="../_images/notebooks_20_COSG_tutorial_53_0.png" style="width: 675px; height: 624px;" />
+</div>
+</div>
+<p>Besides, you could also not show the figure by setting <code class="docutils literal notranslate"><span class="pre">show_figure=False</span></code> and save the figure as a PDF file by <code class="docutils literal notranslate"><span class="pre">save='./markerDendrogram.pdf'</span></code>:</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[28]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>cosg.plotMarkerDendrogram(
+     adata,
+     group_by=&quot;Subclass&quot;,
+     use_rep=&quot;X_scVI&quot;,
+     calculate_dendrogram_on_cosg_scores=True,
+     top_n_genes=3,
+     radius_step=1.5,
+     cmap=&quot;Purples&quot;,
+     gene_label_offset=0.25,
+     gene_label_color=&quot;black&quot;,
+     linkage_method=&quot;ward&quot;,
+     distance_metric=&quot;correlation&quot;,
+     hierarchy_merge_scale=0,
+     collapse_scale=0.2,
+     add_cluster_node_for_single_node_cluster=True,
+     palette=None,
+     figure_size= (10, 10),
+     # node_shape_cell_type=&#39;o&#39;,
+     # node_shape_gene=&#39;s&#39;,
+     colorbar_width=0.01,
+     gene_color_min=0,
+     gene_color_max=None,
+     show_figure=False,
+     # save=&#39;./markerDendrogram.pdf&#39;,
+)
+</pre></div>
+</div>
+</div>
+<p>The shape of cell type nodes and gene nodes could be adjusted via <code class="docutils literal notranslate"><span class="pre">node_shape_cell_type</span></code> and <code class="docutils literal notranslate"><span class="pre">node_shape_gene</span></code>, respectively:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[29]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>cosg.plotMarkerDendrogram(
+     adata,
+     group_by=&quot;Subclass&quot;,
+     use_rep=&quot;X_scVI&quot;,
+     calculate_dendrogram_on_cosg_scores=True,
+     top_n_genes=3,
+     radius_step=1.5,
+     cmap=&quot;Purples&quot;,
+     gene_label_offset=0.25,
+     gene_label_color=&quot;black&quot;,
+     linkage_method=&quot;ward&quot;,
+     distance_metric=&quot;correlation&quot;,
+     hierarchy_merge_scale=0,
+     collapse_scale=0.8,
+     add_cluster_node_for_single_node_cluster=True,
+     palette=None,
+     figure_size= (10, 10),
+     node_shape_cell_type=&#39;d&#39;,
+     node_shape_gene=&#39;^&#39;,
+     colorbar_width=0.01,
+     gene_color_min=0,
+     gene_color_max=None,
+     show_figure=True,
+     # save=&#39;./markerDendrogram.pdf&#39;,
+)
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/notebooks_20_COSG_tutorial_57_0.png" class="no-scaled-link" src="../_images/notebooks_20_COSG_tutorial_57_0.png" style="width: 675px; height: 624px;" />
+</div>
+</div>
+</section>
+<section id="Run-COSG-with-assigned-batch_key">
+<h3>Run COSG with assigned <code class="docutils literal notranslate"><span class="pre">batch_key</span></code><a class="headerlink" href="#Run-COSG-with-assigned-batch_key" title="Link to this heading">#</a></h3>
+<p>In this example dataset, the cells are divided into two groups based on whther the donors are severly affected, and the information is in the <code class="docutils literal notranslate"><span class="pre">Severely</span> <span class="pre">Affected</span> <span class="pre">Donor</span></code> column:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[30]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>pd.crosstab(adata.obs[&#39;Severely Affected Donor&#39;], adata.obs[&#39;Subclass&#39;])
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[30]:
+</pre></div>
+</div>
+<div class="output_area rendered_html docutils container">
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th>Subclass</th>
+      <th>Lamp5 Lhx6</th>
+      <th>Lamp5</th>
+      <th>Pax6</th>
+      <th>Sncg</th>
+      <th>Vip</th>
+      <th>Sst Chodl</th>
+      <th>Sst</th>
+      <th>Pvalb</th>
+      <th>Chandelier</th>
+      <th>L2/3 IT</th>
+      <th>...</th>
+      <th>L6 CT</th>
+      <th>L6b</th>
+      <th>L6 IT Car3</th>
+      <th>L5/6 NP</th>
+      <th>Astrocyte</th>
+      <th>OPC</th>
+      <th>Oligodendrocyte</th>
+      <th>Endothelial</th>
+      <th>VLMC</th>
+      <th>Microglia-PVM</th>
+    </tr>
+    <tr>
+      <th>Severely Affected Donor</th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>N</th>
+      <td>285</td>
+      <td>598</td>
+      <td>134</td>
+      <td>312</td>
+      <td>1463</td>
+      <td>31</td>
+      <td>752</td>
+      <td>1246</td>
+      <td>146</td>
+      <td>4635</td>
+      <td>...</td>
+      <td>221</td>
+      <td>212</td>
+      <td>319</td>
+      <td>286</td>
+      <td>917</td>
+      <td>467</td>
+      <td>1578</td>
+      <td>26</td>
+      <td>77</td>
+      <td>563</td>
+    </tr>
+    <tr>
+      <th>Y</th>
+      <td>20</td>
+      <td>55</td>
+      <td>6</td>
+      <td>17</td>
+      <td>88</td>
+      <td>0</td>
+      <td>28</td>
+      <td>53</td>
+      <td>11</td>
+      <td>191</td>
+      <td>...</td>
+      <td>10</td>
+      <td>12</td>
+      <td>35</td>
+      <td>13</td>
+      <td>163</td>
+      <td>29</td>
+      <td>85</td>
+      <td>5</td>
+      <td>9</td>
+      <td>75</td>
+    </tr>
+  </tbody>
+</table>
+<p>2 rows × 24 columns</p>
+</div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[31]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>sc.pl.embedding(adata,
+    basis=&#39;X_umap&#39;,
+    color=[&#39;Severely Affected Donor&#39;],
+    palette=self_palette2,
+    legend_fontoutline=2,
+    legend_fontsize=7,
+    legend_fontweight=5,
+    # legend_loc=&#39;on data&#39;,
+    # cmap=&#39;Spectral_r&#39;,
+    ncols=3,
+    size=10,
+    frameon=False)
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/notebooks_20_COSG_tutorial_61_0.png" class="no-scaled-link" src="../_images/notebooks_20_COSG_tutorial_61_0.png" style="width: 288px; height: 277px;" />
+</div>
+</div>
+<p>We could run COSG with <code class="docutils literal notranslate"><span class="pre">batch_key</span></code> set as “Severely Affected Donor”, computing cosine similarities separately for each batch before averaging them. The COSG scores were then derived from these averaged similarities.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[32]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>%%time
+groupby=&#39;Subclass&#39;
+cosg.cosg(adata,
+    key_added=&#39;cosg_batch&#39;,
+    # use_raw=False, layer=&#39;log1p&#39;, ## e.g., if you want to use the log1p layer in adata
+    mu=100,
+    batch_key=&#39;Severely Affected Donor&#39;, ### Set the batch key
+    batch_cell_number_threshold=5, ### Minimum number of cells required in a batch for a given cluster to be considered
+    expressed_pct=0.1,
+    remove_lowly_expressed=True,
+    n_genes_user=adata.n_vars, ### Use all the genes, to enable the calculation of transformed COSG scores
+    # n_genes_user=100,
+    groupby=groupby,
+    return_by_group=True,
+    verbosity=1
+)
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Finished identifying marker genes by COSG, and the results are in adata.uns[&#39;cosg_batch&#39;].
+CPU times: user 8.28 s, sys: 3.49 s, total: 11.8 s
+Wall time: 11.8 s
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[33]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>pd.DataFrame(adata.uns[&#39;cosg_batch&#39;][&#39;names&#39;]).head()
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[33]:
+</pre></div>
+</div>
+<div class="output_area rendered_html docutils container">
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Lamp5 Lhx6</th>
+      <th>Lamp5</th>
+      <th>Pax6</th>
+      <th>Sncg</th>
+      <th>Vip</th>
+      <th>Sst Chodl</th>
+      <th>Sst</th>
+      <th>Pvalb</th>
+      <th>Chandelier</th>
+      <th>L2/3 IT</th>
+      <th>...</th>
+      <th>L6 CT</th>
+      <th>L6b</th>
+      <th>L6 IT Car3</th>
+      <th>L5/6 NP</th>
+      <th>Astrocyte</th>
+      <th>OPC</th>
+      <th>Oligodendrocyte</th>
+      <th>Endothelial</th>
+      <th>VLMC</th>
+      <th>Microglia-PVM</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>NKX2-1</td>
+      <td>LINC02520</td>
+      <td>AC006305.1</td>
+      <td>AC004014.1</td>
+      <td>LINC01705</td>
+      <td>NPY</td>
+      <td>NMU</td>
+      <td>MEPE</td>
+      <td>AC006065.4</td>
+      <td>LINC00507</td>
+      <td>...</td>
+      <td>CLPSL1</td>
+      <td>AL499602.1</td>
+      <td>SMYD1</td>
+      <td>AC084167.1</td>
+      <td>PRDM16</td>
+      <td>AC004852.2</td>
+      <td>LINC01608</td>
+      <td>CLDN5</td>
+      <td>COL1A2</td>
+      <td>PTPRC</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>SFTA3</td>
+      <td>SCNN1G</td>
+      <td>NTF3</td>
+      <td>AC091576.1</td>
+      <td>VIP</td>
+      <td>TMEM114</td>
+      <td>AC113347.4</td>
+      <td>MYO5B</td>
+      <td>AC106874.1</td>
+      <td>LINC01484</td>
+      <td>...</td>
+      <td>AC073968.2</td>
+      <td>AL357509.1</td>
+      <td>DCSTAMP</td>
+      <td>NPSR1-AS1</td>
+      <td>OBI1-AS1</td>
+      <td>GPR17</td>
+      <td>FOLH1</td>
+      <td>TGM2</td>
+      <td>TBX18</td>
+      <td>SYK</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>LINC01344</td>
+      <td>CPLX3</td>
+      <td>AL139090.1</td>
+      <td>AC073316.1</td>
+      <td>AJ006995.1</td>
+      <td>GHRH</td>
+      <td>LINC02133</td>
+      <td>AC093765.2</td>
+      <td>SCUBE3</td>
+      <td>AC008574.1</td>
+      <td>...</td>
+      <td>AC127459.2</td>
+      <td>RASEF</td>
+      <td>SMIM32</td>
+      <td>LINC02543</td>
+      <td>SLC39A12</td>
+      <td>BEST3</td>
+      <td>CD22</td>
+      <td>MYCT1</td>
+      <td>FMO2</td>
+      <td>FYB1</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>HCRTR2</td>
+      <td>AC099482.2</td>
+      <td>RELN</td>
+      <td>AL161629.1</td>
+      <td>LINC02257</td>
+      <td>SST</td>
+      <td>C8orf87</td>
+      <td>LRRC38</td>
+      <td>LINC00943</td>
+      <td>CNGB1</td>
+      <td>...</td>
+      <td>AC092114.1</td>
+      <td>LINC01654</td>
+      <td>AC010401.1</td>
+      <td>NPSR1</td>
+      <td>ETNPPL</td>
+      <td>FERMT1</td>
+      <td>MOG</td>
+      <td>CD34</td>
+      <td>FOXD1</td>
+      <td>IKZF1</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>MYB</td>
+      <td>KIT</td>
+      <td>LINC01539</td>
+      <td>LINC02408</td>
+      <td>NPR3</td>
+      <td>CORT</td>
+      <td>PAWR</td>
+      <td>SULF1</td>
+      <td>NOG</td>
+      <td>LINC02714</td>
+      <td>...</td>
+      <td>SEMA3E</td>
+      <td>AL596257.1</td>
+      <td>TRPC7-AS1</td>
+      <td>CD200R1L</td>
+      <td>SLC14A1</td>
+      <td>AC007106.1</td>
+      <td>SH3TC2</td>
+      <td>PCAT19</td>
+      <td>C7</td>
+      <td>DOCK8</td>
+    </tr>
+  </tbody>
+</table>
+<p>5 rows × 24 columns</p>
+</div></div>
+</div>
+<p>and here are the COSG results without <code class="docutils literal notranslate"><span class="pre">batch_key</span></code> assigned:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[34]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>pd.DataFrame(adata.uns[&#39;cosg&#39;][&#39;names&#39;]).head()
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[34]:
+</pre></div>
+</div>
+<div class="output_area rendered_html docutils container">
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Lamp5 Lhx6</th>
+      <th>Lamp5</th>
+      <th>Pax6</th>
+      <th>Sncg</th>
+      <th>Vip</th>
+      <th>Sst Chodl</th>
+      <th>Sst</th>
+      <th>Pvalb</th>
+      <th>Chandelier</th>
+      <th>L2/3 IT</th>
+      <th>...</th>
+      <th>L6 CT</th>
+      <th>L6b</th>
+      <th>L6 IT Car3</th>
+      <th>L5/6 NP</th>
+      <th>Astrocyte</th>
+      <th>OPC</th>
+      <th>Oligodendrocyte</th>
+      <th>Endothelial</th>
+      <th>VLMC</th>
+      <th>Microglia-PVM</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>SFTA3</td>
+      <td>LINC02520</td>
+      <td>AC006305.1</td>
+      <td>AC004014.1</td>
+      <td>VIP</td>
+      <td>NPY</td>
+      <td>AC113347.4</td>
+      <td>MEPE</td>
+      <td>AC106874.1</td>
+      <td>LINC00507</td>
+      <td>...</td>
+      <td>CLPSL1</td>
+      <td>AL499602.1</td>
+      <td>SMYD1</td>
+      <td>CD200R1L</td>
+      <td>ETNPPL</td>
+      <td>GPR17</td>
+      <td>LINC01608</td>
+      <td>CLDN5</td>
+      <td>COL1A2</td>
+      <td>PTPRC</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>NKX2-1</td>
+      <td>SCNN1G</td>
+      <td>LINC01162</td>
+      <td>AC091576.1</td>
+      <td>CHRNA2</td>
+      <td>TMEM114</td>
+      <td>NMU</td>
+      <td>AC093765.2</td>
+      <td>NOG</td>
+      <td>LINC01484</td>
+      <td>...</td>
+      <td>AC073968.2</td>
+      <td>RASEF</td>
+      <td>SMIM32</td>
+      <td>AC084167.1</td>
+      <td>PRDM16</td>
+      <td>BEST3</td>
+      <td>MOG</td>
+      <td>MYCT1</td>
+      <td>FOXD1</td>
+      <td>FYB1</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>LINC01344</td>
+      <td>KIT</td>
+      <td>LINC01539</td>
+      <td>AC073316.1</td>
+      <td>LINC01705</td>
+      <td>CORT</td>
+      <td>C8orf87</td>
+      <td>MYO5B</td>
+      <td>LINC00943</td>
+      <td>CNGB1</td>
+      <td>...</td>
+      <td>SMIM36</td>
+      <td>SLITRK6</td>
+      <td>AC010401.1</td>
+      <td>NPSR1-AS1</td>
+      <td>SLC39A12</td>
+      <td>AC004852.2</td>
+      <td>FOLH1</td>
+      <td>TGM2</td>
+      <td>TBX18</td>
+      <td>SYK</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>AL355482.1</td>
+      <td>AC099482.2</td>
+      <td>ABCB5</td>
+      <td>AL161629.1</td>
+      <td>AJ006995.1</td>
+      <td>GHRH</td>
+      <td>LINC02133</td>
+      <td>LRRC38</td>
+      <td>AC006065.4</td>
+      <td>AC008574.1</td>
+      <td>...</td>
+      <td>KL</td>
+      <td>SCUBE1</td>
+      <td>AC073225.1</td>
+      <td>LINC02042</td>
+      <td>OBI1-AS1</td>
+      <td>LINC01546</td>
+      <td>CD22</td>
+      <td>SRARP</td>
+      <td>C7</td>
+      <td>IKZF1</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>HCRTR2</td>
+      <td>CPLX3</td>
+      <td>LINC01416</td>
+      <td>AC004862.1</td>
+      <td>NPR3</td>
+      <td>DDC</td>
+      <td>OTOF</td>
+      <td>AC006364.1</td>
+      <td>SCUBE3</td>
+      <td>LINC02714</td>
+      <td>...</td>
+      <td>AC092114.1</td>
+      <td>FIBCD1</td>
+      <td>DCSTAMP</td>
+      <td>NPSR1</td>
+      <td>SLC14A1</td>
+      <td>VCAN-AS1</td>
+      <td>SLCO1A2</td>
+      <td>FENDRR</td>
+      <td>FMO2</td>
+      <td>PIK3R5</td>
+    </tr>
+  </tbody>
+</table>
+<p>5 rows × 24 columns</p>
+</div></div>
+</div>
+</section>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="../tutorials.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">Tutorials</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="COSG-tutorial.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">Tutorial at first release (v1.0.1)</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#Setting-basics">Setting basics</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#Setting-colors">Setting colors</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#Setting-paths">Setting paths</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#Load-the-data">Load the data</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#Import-COSG">Import COSG</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#Calculate-normalized-COSG-scores-for-each-gene-across-all-cell-types">Calculate normalized COSG scores for each gene across all cell types</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#Visualizing-the-marker-genes-with-plotMarkerDendrogram">Visualizing the marker genes with plotMarkerDendrogram</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#Run-COSG-with-assigned-batch_key">Run COSG with assigned <code class="docutils literal notranslate"><span class="pre">batch_key</span></code></a></li>
+</ul>
+</li>
+</ul>
+  </nav></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2021-2025, Min Dai.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.3.7.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

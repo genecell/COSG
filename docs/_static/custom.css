@@ -1,0 +1,94 @@
+.container {
+    display: flex;
+    flex-wrap: wrap;  /* Allows wrapping on smaller screens */
+}
+
+.bd-primary-sidebar {
+    width: 15% !important;  /* Sidebar takes 25% of the container width */
+    background-color: #000;  /* You can change this color */
+}
+
+.bd-container {
+    width: 100% !important;  /* Full width by default */
+    margin: 0 auto;  /* Center the container horizontally */
+    padding: 20px;  /* Add padding inside the container */
+}
+
+.bd-container__inner {
+    width: 100%;  /* Constrain the width */
+    margin: 0 auto;     /* Center the content horizontally */
+    padding: 20px;      /* Add padding inside the container */
+}
+
+.bd-page-width {
+    width: 100%;  /* Full width of the container */
+    margin: 0 20px;  /* Add 20px margin on the left and right sides */
+}
+
+.main-content {
+    width: 85% !important;  /* Main content takes 75% of the container width */
+    background-color: #000 !important;  /* You can change this color */
+}
+
+.no-scaled-link {
+    width: auto;            /* Scale image to 100% of its container's width */
+    height: auto;           /* Maintain aspect ratio */
+    max-width: none;        /* Prevent image from exceeding the container's width */
+    max-height:none;
+    overflow: visible;
+    display: block;         /* Block-level display for centering */
+    margin: 0 auto;         /* Center the image horizontally */
+}
+
+.sidebar-toggle-button {
+    background-color: transparent;
+    border: none;
+    color: #24292e;
+    padding: 5px 10px;
+    font-size: 16px;
+    cursor: pointer;
+    border-radius: 4px;
+    margin-left: 10px;
+}
+
+.sidebar-toggle-button:hover {
+    color: #551A8B;
+    background-color: transparent; /* Remove background color on hover */
+    text-decoration: underline;
+}
+
+.bd-sidebar-primary.hidden {
+    display: none;
+}
+
+.bd-main.full-width {
+    margin-left: 0 !important;
+}
+
+
+.bd-navbar {
+    display: flex;
+    justify-content: space-between;  /* Spread out left and right elements */
+}
+
+/* Change background color, text color, and border of all navbar buttons */
+.navbar a.nav-link {
+    background-color: transparent; /* Custom background color */
+    color: #24292e;           /* Custom text color */
+}
+
+/* Change to a different color (e.g., orange) */
+/* a:visited {
+    color: #0F6DB7; 
+} */
+
+/* Customize Next and Previous link colors */
+/* Replace with your desired color */
+/* a.nav-link.previous {
+    color: #0F6DB7; 
+} */
+
+/* Replace with your desired color */
+/* a.nav-link.next {
+    color: #0F6DB7; 
+} */

@@ -1,0 +1,871 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="./" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>cosg package &#8212; COSG v1.0.2 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=362ab14a" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=0330b353" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="_static/documentation_options.js?v=e562d664"></script>
+    <script src="_static/doctools.js?v=9a2dae69"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'cosg';</script>
+    <script src="_static/sidebar_toggle.js?v=3b053ec6"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="References" href="references.html" />
+    <link rel="prev" title="API" href="modules.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class=" navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="_static/COSG_logo.png" class="logo__image only-light" alt="COSG v1.0.2 documentation - Home"/>
+    <img src="_static/COSG_logo.png" class="logo__image only-dark pst-js-only" alt="COSG v1.0.2 documentation - Home"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class=" navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="installation.html">
+    Installation
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="tutorials.html">
+    Tutorials
+  </a>
+</li>
+
+
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="modules.html">
+    API
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="references.html">
+    References
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="releaseNotes.html">
+    Release notes
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/genecell/COSG" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="installation.html">
+    Installation
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="tutorials.html">
+    Tutorials
+  </a>
+</li>
+
+
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="modules.html">
+    API
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="references.html">
+    References
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="releaseNotes.html">
+    Release notes
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/genecell/COSG" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<h3><a href="index.html">Table of Contents</a></h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorials.html">Tutorials</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="modules.html">API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="references.html">References</a></li>
+<li class="toctree-l1"><a class="reference internal" href="releaseNotes.html">Release notes</a></li>
+</ul>
+</div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="modules.html" class="nav-link">API</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">cosg package</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="module-cosg">
+<span id="cosg-package"></span><h1>cosg package<a class="headerlink" href="#module-cosg" title="Link to this heading">#</a></h1>
+<dl class="py function">
+<dt class="sig sig-object py" id="cosg.cosg">
+<span class="sig-prename descclassname"><span class="pre">cosg.</span></span><span class="sig-name descname"><span class="pre">cosg</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">adata</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">groupby</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'CellTypes'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">groups</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'all'</span></span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Iterable</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'all'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mu</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">remove_lowly_expressed</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">expressed_pct</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_genes_user</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">50</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">batch_key</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">batch_cell_number_threshold</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">3</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">key_added</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">calculate_logfoldchanges</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_raw</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">layer</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reference</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'rest'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">return_by_group</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbosity</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">copy</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cosg.cosg" title="Link to this definition">#</a></dt>
+<dd><p>Marker gene identification for single-cell sequencing data using COSG.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>adata</strong> – AnnData object with cell group information.</p></li>
+<li><p><strong>groupby</strong> (<em>str</em><em>, </em><em>default 'CellTypes'</em>) – Key in <cite>adata.obs</cite> that defines the cell group labels. Defaults to ‘CellTypes’.</p></li>
+<li><p><strong>groups</strong> (<em>{'all'}</em><em> or </em><em>iterable</em><em> of </em><em>str</em><em>, </em><em>default 'all'</em>) – Subset of cell groups, e.g. [<cite>‘g1’</cite>, <cite>‘g2’</cite>, <cite>‘g3’</cite>], to which comparison shall be restricted. The default value is ‘all’, and all groups will be compared.</p></li>
+<li><p><strong>mu</strong> (<em>float</em><em>, </em><em>default 1</em>) – The penalty parameter restricting marker genes expressing in non-target cell groups. Larger value represents more strict restrictions. mu should be non-negative, and by default, mu = 1.</p></li>
+<li><p><strong>remove_lowly_expressed</strong> (<em>bool</em><em>, </em><em>default False</em>) – If True, genes that express a percentage of target cells smaller than a specific value (<cite>expressed_pct</cite>) are not considered as marker genes for the target cells. The default value is False.</p></li>
+<li><p><strong>expressed_pct</strong> (<em>float</em><em>, </em><em>optional</em><em>, </em><em>default 0.1</em>) – When <cite>remove_lowly_expressed</cite> is set to True, genes that express a percentage of target cells smaller than a specific value (<cite>expressed_pct</cite>) are not considered as marker genes for the target cells. The default value for <cite>expressed_pct</cite> is 0.1 (10%).</p></li>
+<li><p><strong>n_genes_user</strong> (<em>int</em><em>, </em><em>default 50</em>) – The number of genes that appear in the returned tables. The default value is 50.</p></li>
+<li><p><strong>batch_key</strong> (<em>str</em><em>, </em><em>optional</em><em>, </em><em>default None</em>) – Used to indicate which batch info in <cite>adata.obs</cite> to use for calculate the cosine similarities separately for each batch
+and then average them. The default value is None.</p></li>
+<li><p><strong>batch_cell_number_threshold</strong> (<em>int</em><em>, </em><em>default 3</em>) – Minimum number of cells required in a batch for a given cluster to be considered
+for computing the cosine similarity score when <cite>batch_key</cite> is not None. If a cluster has fewer than this number of cells
+in a batch, the cosine similarity from that batch for the cluster will be ignored in the average.</p></li>
+<li><p><strong>key_added</strong> (<em>str</em><em>, </em><em>optional</em><em>, </em><em>default None</em>) – Key under which the COSG results will be stored in <cite>adata.uns</cite>. If None, the default key ‘cosg’ is used.</p></li>
+<li><p><strong>calculate_logfoldchanges</strong> (<em>bool</em><em>, </em><em>default False</em>) – If True, computes log fold-changes for the marker genes.</p></li>
+<li><p><strong>use_raw</strong> (<em>bool</em><em>, </em><em>default False</em>) – If True and <cite>adata.raw</cite> exists, raw UMI counts saved in <cite>adata.raw.X</cite> are used for calculations.</p></li>
+<li><p><strong>layer</strong> (<em>str</em><em>, </em><em>optional</em><em>, </em><em>default None</em>) – Key in <cite>adata.layers</cite> to specify an alternative gene expression layer for COSG.</p></li>
+<li><p><strong>reference</strong> (<em>str</em><em>, </em><em>default 'rest'</em>) – Specifies the reference group for comparison. If <cite>‘rest’</cite>, compare each group to the union of the rest of the group.
+If a group identifier, compare with respect to this group.</p></li>
+<li><p><strong>return_by_group</strong> (<em>bool</em><em>, </em><em>default True</em>) – If True, the COSG scores are also summarized and stored separately by group in adata.uns[<cite>key_added</cite>][‘COSG’]. This will output another extra copy of the results. Defaults to True.</p></li>
+<li><p><strong>verbosity</strong> (<em>int</em><em>, </em><em>default 0</em>) – Controls the verbosity of logging messages, defaults to 0. Higher values produce more detailed messages.</p></li>
+<li><p><strong>copy</strong> (<em>bool</em><em>, </em><em>default False</em>) – If True, returns a copy of <cite>adata</cite> with the computed embeddings instead of modifying in place. Defaults to False.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><p>The function stores the COSG marker gene identification results in <cite>adata.uns[key_added]</cite> (if <cite>copy</cite> is False)
+or returns a modified copy of <cite>adata</cite> (if <cite>copy</cite> is True). The results include structured arrays containing
+gene names and their corresponding COSG scores for each cell group:
+names : structured <cite>np.ndarray</cite> (<cite>.uns[‘cosg’]</cite>)</p>
+<blockquote>
+<div><p>Structured array to be indexed by group id storing the gene names. Ordered according to scores.</p>
+</div></blockquote>
+<dl>
+<dt>scores<span class="classifier">structured <cite>np.ndarray</cite> (<cite>.uns[‘cosg’]</cite>)</span></dt><dd><dl class="simple">
+<dt>Structured array to be indexed by group id storing COSG scores for each gene for each</dt><dd><p>group. Ordered according to scores.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<p>The marker genes and their COSG scores are also summarized and stored separately by group in
+adata.uns[<cite>key_added</cite>][‘COSG’] if <cite>return_by_group = True</cite>.</p>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None or AnnData</p>
+</dd>
+</dl>
+<p class="rubric">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">cosg</span> <span class="k">as</span> <span class="nn">cosg</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">scanpy</span> <span class="k">as</span> <span class="nn">sc</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">adata</span> <span class="o">=</span> <span class="n">sc</span><span class="o">.</span><span class="n">datasets</span><span class="o">.</span><span class="n">pbmc68k_reduced</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">cosg</span><span class="o">.</span><span class="n">cosg</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">key_added</span><span class="o">=</span><span class="s1">&#39;cosg&#39;</span><span class="p">,</span> <span class="n">groupby</span><span class="o">=</span><span class="s1">&#39;bulk_labels&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1">### Visualize the marker genes in a dot plot</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">cosg</span><span class="o">.</span><span class="n">plotMarkerDotplot</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">adata</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">groupby</span><span class="o">=</span><span class="s1">&#39;bulk_labels&#39;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">top_n_genes</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">key_cosg</span><span class="o">=</span><span class="s1">&#39;cosg&#39;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">use_rep</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">swap_axes</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">standard_scale</span><span class="o">=</span><span class="s1">&#39;var&#39;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">cmap</span><span class="o">=</span><span class="s1">&#39;Spectral_r&#39;</span>
+<span class="gp">... </span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cosg.indexByGene">
+<span class="sig-prename descclassname"><span class="pre">cosg.</span></span><span class="sig-name descname"><span class="pre">indexByGene</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataFrame</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gene_key</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'names'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">score_key</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'scores'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">set_nan_to_zero</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">convert_negative_one_to_zero</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cosg.indexByGene" title="Link to this definition">#</a></dt>
+<dd><p>Reshapes a DataFrame with MultiIndex columns where gene names are under the specified key
+and scores are under the corresponding key. The resulting DataFrame will have gene names as the index
+and scores for each cell type in separate columns.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>This function is designed for reindexing COSG’s output stored in <cite>adata.uns[‘cosg’][‘COSG’]</cite>.
+It is recommended to set <cite>n_genes_user=adata.n_vars</cite> when calling the <cite>cosg.cosg</cite> function to ensure
+that scores for all genes are returned.</p>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>df</strong> (<em>pd.DataFrame</em>) – Input DataFrame with MultiIndex columns.</p></li>
+<li><p><strong>gene_key</strong> (<em>str</em><em>, </em><em>optional</em><em>, </em><em>default=&quot;names&quot;</em>) – The key used for gene names in the first level of MultiIndex.</p></li>
+<li><p><strong>score_key</strong> (<em>str</em><em>, </em><em>optional</em><em>, </em><em>default=&quot;scores&quot;</em>) – The key used for scores in the first level of MultiIndex.</p></li>
+<li><p><strong>set_nan_to_zero</strong> (<em>bool</em><em>, </em><em>optional</em><em>, </em><em>default=False</em>) – If True, replaces all NaN values in the resulting DataFrame with 0.
+Set this parameter to True if <cite>n_genes_user=adata.n_vars</cite> is not set when calling the <cite>cosg.cosg</cite> function.</p></li>
+<li><p><strong>convert_negative_one_to_zero</strong> (<em>bool</em><em>, </em><em>optional</em><em>, </em><em>default=True</em>) – If True, replaces all occurrences of -1.0 in the resulting DataFrame with 0.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Reshaped DataFrame with genes as index and scores per cell type.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>pd.DataFrame</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><strong>TypeError</strong> – If the input df is not a pandas DataFrame.</p></li>
+<li><p><strong>ValueError</strong> – If the input DataFrame does not have MultiIndex columns with at least two levels,
+    or if the specified gene_key or score_key is not found in the first level of the columns.</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">cosg_df</span> <span class="o">=</span> <span class="n">indexByGene</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">adata</span><span class="o">.</span><span class="n">uns</span><span class="p">[</span><span class="s1">&#39;cosg&#39;</span><span class="p">][</span><span class="s1">&#39;COSG&#39;</span><span class="p">],</span>
+<span class="gp">... </span>    <span class="n">gene_key</span><span class="o">=</span><span class="s2">&quot;names&quot;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">score_key</span><span class="o">=</span><span class="s2">&quot;scores&quot;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">set_nan_to_zero</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">convert_negative_one_to_zero</span><span class="o">=</span><span class="kc">True</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span> <span class="c1">### Check the reindexed data frame</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">cosg_df</span><span class="o">.</span><span class="n">head</span><span class="p">()</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cosg.iqrLogNormalize">
+<span class="sig-prename descclassname"><span class="pre">cosg.</span></span><span class="sig-name descname"><span class="pre">iqrLogNormalize</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataFrame</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">q_upper</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.95</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">q_lower</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.75</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cosg.iqrLogNormalize" title="Link to this definition">#</a></dt>
+<dd><p>Applies an IQR-based scaling to a DataFrame followed by a log1p transformation.</p>
+<p>The function computes the interquartile range (IQR) for each column as the difference
+between the q_upper and q_lower quantiles. Each column is then divided by its respective IQR.</p>
+<p>If any IQR value is zero, it is replaced with the smallest nonzero IQR found among all columns.
+If all IQR values are zero, a replacement value of 1e-6 is used.</p>
+<p>Optionally, the log1p-transformed result can be further scaled using min–max normalization
+to rescale the values to the [0, 1] range (applied per column).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>df</strong> (<em>pd.DataFrame</em>) – Input DataFrame containing numerical values.</p></li>
+<li><p><strong>q_upper</strong> (<em>float</em><em>, </em><em>optional</em><em>, </em><em>default=0.95</em>) – The upper quantile used for IQR calculation.</p></li>
+<li><p><strong>q_lower</strong> (<em>float</em><em>, </em><em>optional</em><em>, </em><em>default=0.75</em>) – The lower quantile used for IQR calculation.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A DataFrame with the same shape as the input containing the IQR-scaled and log1p-transformed values.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>pd.DataFrame</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><strong>TypeError</strong> – If the input df is not a pandas DataFrame.</p></li>
+<li><p><strong>ValueError</strong> – If q_lower is not in the range [0, q_upper) or if q_upper is not in (q_lower, 1].</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="c1">## cosg_df is a DataFrame with gene scores, output from the cosg.indexByGene function</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">cosg_df_transformed</span> <span class="o">=</span> <span class="n">iqr_log_normalize</span><span class="p">(</span><span class="n">cosg_df</span><span class="p">,</span> <span class="n">q_upper</span><span class="o">=</span><span class="mf">0.95</span><span class="p">,</span> <span class="n">q_lower</span><span class="o">=</span><span class="mf">0.75</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cosg.plotMarkerDendrogram">
+<span class="sig-prename descclassname"><span class="pre">cosg.</span></span><span class="sig-name descname"><span class="pre">plotMarkerDendrogram</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">adata</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">group_by</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_rep</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'X_pca'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">calculate_dendrogram_on_cosg_scores</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">top_n_genes</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">3</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cosg_key</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'cosg'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">radius_step</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1.5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cmap</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'Purples'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cell_type_label_offset</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gene_label_offset</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.25</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gene_label_color</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">linkage_method</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'ward'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">distance_metric</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'euclidean'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hierarchy_merge_scale</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">collapse_scale</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">add_cluster_node_for_single_node_cluster</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">palette</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gene_color_min</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gene_color_max</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">font_outline</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">figure_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">tuple</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">(10,</span> <span class="pre">10)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">node_shape_cell_type</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'o'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">node_shape_gene</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'s'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">node_shape_internal</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'o'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">colorbar_width</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.01</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">layer</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gene_size_scale</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">300</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show_figure</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cosg.plotMarkerDendrogram" title="Link to this definition">#</a></dt>
+<dd><p>Visualizes a radial dendrogram of cell types with attached top marker genes.</p>
+<p>Computes a dendrogram in two modes:
+- If <cite>calculate_dendrogram_on_cosg_scores</cite> is True, uses COSG scores from <cite>adata.uns[‘cosg’][‘COSG’]</cite>,</p>
+<blockquote>
+<div><p>processed with <cite>indexByGene()</cite> and <cite>iqrLogNormalize()</cite>, then computes the dendrogram on the transposed DataFrame
+with the specified <cite>distance_metric</cite> and <cite>linkage_method</cite>.</p>
+</div></blockquote>
+<ul class="simple">
+<li><p>If False, aggregates <cite>adata.obsm[use_rep]</cite> by <cite>adata.obs[group_by]</cite>, computing distances with <cite>pdist</cite>
+and linkage with the given <cite>distance_metric</cite> and <cite>linkage_method</cite>.</p></li>
+</ul>
+<p>When <cite>collapse_scale</cite> (0 to 1) is set and yields multiple clusters, cell types are grouped with cluster nodes;
+if only one cluster, they attach directly to the root unless <cite>add_cluster_node_for_single_node_cluster</cite> is True,
+which adds a cluster node for single-member clusters. If <cite>collapse_scale</cite> is None, <cite>hierarchy_merge_scale</cite>
+(0 to 1) controls merging binary nodes into multi-child nodes based on distance similarity, with no merging
+if None. Top marker genes (from COSG data) are added as nodes to cell type leaves, with labels offset by
+<cite>gene_label_offset</cite> and colored by <cite>gene_label_color</cite> if provided.</p>
+<p>Cell type node colors come from <cite>palette</cite>:
+- Dictionary: Maps cell types to colors.
+- List: Assigns colors by cell type order.
+- None: Uses <cite>adata.uns[f”{group_by}_colors”]</cite> if available, else defaults to “lightblue”.
+Marker gene node colors are scaled between <cite>gene_color_min</cite> and <cite>gene_color_max</cite> (max defaults to the
+highest score). Node sizes reflect expression percentage (fraction of cells with expression &gt; 0) from
+<cite>adata.X</cite> or <cite>adata.layers[layer]</cite>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>adata</strong> (<em>AnnData</em>) – An AnnData object.</p></li>
+<li><p><strong>group_by</strong> (<em>str</em>) – The observation key in adata.obs to group cell types.</p></li>
+<li><p><strong>use_rep</strong> (<em>str</em><em>, </em><em>optional</em><em>, </em><em>default='X_pca'</em>) – The representation to use when aggregating data from adata.obsm.</p></li>
+<li><p><strong>calculate_dendrogram_on_cosg_scores</strong> (<em>bool</em><em>, </em><em>optional</em><em>, </em><em>default=True</em>) – If True, compute the dendrogram on COSG scores derived using cosg.cosg, cosg.indexByGene and cosg.iqrLogNormalize.
+If False, compute the dendrogram on the aggregated representation from adata.obsm[use_rep].</p></li>
+<li><p><strong>top_n_genes</strong> (<em>int</em><em>, </em><em>optional</em><em>, </em><em>default=3</em>) – Number of top marker genes (per cell type) to attach.</p></li>
+<li><p><strong>cosg_key</strong> (<em>str</em><em>, </em><em>optional</em><em>, </em><em>default='cosg'</em>) – The key used to access the COSG marker gene identification results. Defaults to “cosg”.</p></li>
+<li><p><strong>radius_step</strong> (<em>float</em><em>, </em><em>optional</em><em>, </em><em>default=1.5</em>) – Radial distance between successive levels in the layout.</p></li>
+<li><p><strong>cmap</strong> (<em>str</em><em>, </em><em>optional</em><em>, </em><em>default=&quot;Purples&quot;</em>) – The matplotlib colormap to use for gene nodes.</p></li>
+<li><p><strong>cell_type_label_offset</strong> (<em>float</em><em>, </em><em>optional</em><em>, </em><em>default=0</em>) – Fractional radial offset for cell type labels from the cell type node.</p></li>
+<li><p><strong>gene_label_offset</strong> (<em>float</em><em>, </em><em>optional</em><em>, </em><em>default=0.25</em>) – Fractional radial offset for gene labels from the marker node.</p></li>
+<li><p><strong>gene_label_color</strong> (<em>str</em><em>, </em><em>optional</em><em>, </em><em>default=None</em>) – If provided, this color is used for gene labels; otherwise, the gene node’s colormap color is used.</p></li>
+<li><p><strong>linkage_method</strong> (<em>str</em><em>, </em><em>optional</em><em>, </em><em>default=&quot;ward&quot;</em>) – Linkage method to use when computing the dendrogram.</p></li>
+<li><p><strong>distance_metric</strong> (<em>str</em><em>, </em><em>optional</em><em>, </em><em>default=&quot;euclidean&quot;</em>) – Distance metric to use when computing the dendrogram.</p></li>
+<li><p><strong>hierarchy_merge_scale</strong> (<em>float</em><em> or </em><em>None</em><em>, </em><em>optional</em><em>, </em><em>default=None</em>) – Controls the merging of binary nodes into multi-child nodes to simulate a non-binary hierarchy when
+collapse_scale is None. If provided, must be a float between 0 and 1, scaling the threshold relative to
+the range of linkage distances in Z. Nodes with distance differences below this scaled threshold are
+merged with their parent, allowing nodes to have more than two children.
+- 0: No merging (retains binary structure).
+- 1: Maximal merging (merges nodes if their distances differ by less than the full distance range).
+If None, no merging is performed, preserving the default binary dendrogram structure from Z.
+Raises ValueError if not between 0 and 1 when provided.</p></li>
+<li><p><strong>collapse_scale</strong> (<em>float</em><em> or </em><em>None</em><em>, </em><em>optional</em><em>, </em><em>default=None</em>) – Controls the level of clustering in the dendrogram. If None, builds a full hierarchical dendrogram where
+nodes may have more than two children based on distance similarity. If a float between 0 and 1, scales the
+threshold relative to the min and max linkage distances in Z, collapsing leaves and internal nodes with
+distances below this scaled threshold into cluster nodes.
+- 0: Maximal clustering (collapses at the minimum distance).
+- 1: Minimal clustering (collapses at the maximum distance).
+If only one cluster is found, no extra cluster node is added between the root and leaves.
+Raises ValueError if not between 0 and 1 when provided.</p></li>
+<li><p><strong>add_cluster_node_for_single_node_cluster</strong> (<em>bool</em><em>, </em><em>optional</em><em>, </em><em>default=True</em>) – Determines whether to create a cluster node for clusters containing only a single cell type when
+collapse_scale is provided. If True, a cluster node is added between the root and the single cell type
+node, maintaining a consistent hierarchy. If False, the single cell type node is connected directly to
+the root without an intermediate cluster node. Only applies when collapse_scale is not None and clustering
+results in single-member clusters.</p></li>
+<li><p><strong>palette</strong> (<em>dict</em><em>, </em><em>list</em><em>, or </em><em>None</em><em>, </em><em>optional</em><em>, </em><em>default=None</em>) – Colors for cell type nodes. If a dict, keys are cell type names and values are colors.
+If a list, colors are assigned in order of cell types.
+If None and if adata.uns contains f”{group_by}_colors”, that palette is used.
+Otherwise, cell type nodes default to “lightblue”.</p></li>
+<li><p><strong>gene_color_min</strong> (<em>float</em><em>, </em><em>optional</em><em>, </em><em>default=0</em>) – Minimum value for normalizing marker gene node colors.</p></li>
+<li><p><strong>gene_color_max</strong> (<em>float</em><em> or </em><em>None</em><em>, </em><em>optional</em><em>, </em><em>default=None</em>) – Maximum value for normalizing marker gene node colors. If None, the maximum among marker scores is used.</p></li>
+<li><p><strong>font_outline</strong> (<em>float</em><em>, </em><em>optional</em><em>, </em><em>default=2</em>) – Outline width for text labels.</p></li>
+<li><p><strong>figure_size</strong> (<em>tuple</em><em>, </em><em>optional</em><em>, </em><em>default=</em><em>(</em><em>10</em><em>, </em><em>10</em><em>)</em>) – Size of the figure.</p></li>
+<li><p><strong>node_shape_cell_type</strong> (<em>str</em><em>, </em><em>optional</em><em>, </em><em>default='d'</em>) – Shape of the cell type nodes. Default is ‘d’ (diamond). Can be any valid NetworkX node shape.
+Specification is as matplotlib.scatter marker, one of ‘so^&gt;v&lt;dph8’. In detail:
+- ‘o’ : Circle
+- ‘s’ : Square
+- ‘d’ : Diamond
+- ‘v’ : Triangle Down
+- ‘^’ : Triangle Up
+- ‘&lt;’ : Triangle Left
+- ‘&gt;’ : Triangle Right
+- ‘p’ : Pentagon
+- ‘h’ : Hexagon
+- ‘8’ : Octagon</p></li>
+<li><p><strong>node_shape_gene</strong> (<em>str</em><em>, </em><em>optional</em><em>, </em><em>default='o'</em>) – Shape of marker gene nodes. Default is ‘o’ (circle).</p></li>
+<li><p><strong>node_shape_internal</strong> (<em>str</em><em>, </em><em>optional</em><em>, </em><em>default='o'</em>) – Shape of internal dendrogram nodes. Default is ‘o’ (circle).</p></li>
+<li><p><strong>colorbar_width</strong> (<em>float</em><em>, </em><em>optional</em><em>, </em><em>default=0.01</em>) – Width (in normalized figure coordinates) for the colorbar.</p></li>
+<li><p><strong>layer</strong> (<em>str</em><em>, </em><em>optional</em><em>, </em><em>default=None</em>) – If provided, use adata.layers[layer] to calculate expression; otherwise, use adata.X.</p></li>
+<li><p><strong>gene_size_scale</strong> (<em>float</em><em>, </em><em>optional</em><em>, </em><em>default=300</em>) – Base size for marker gene nodes; final size = gene_size_scale * (expression_percentage / 100).</p></li>
+<li><p><strong>show_figure</strong> (<em>bool</em><em>, </em><em>optional</em><em> (</em><em>default=True</em><em>)</em>) – Whether to display the figure after plotting.</p></li>
+<li><p><strong>save</strong> (<em>str</em><em> or </em><em>None</em><em>, </em><em>optional</em><em> (</em><em>default=None</em><em>)</em>) – File path to save the resulting figure. If None, the figure will not be saved.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Displays a matplotlib figure of the radial dendrogram if <cite>show_figure=True</cite>.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">cosg</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">cosg</span><span class="o">.</span><span class="n">plotMarkerDendrogram</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">adata</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">group_by</span><span class="o">=</span><span class="s2">&quot;CellTypes&quot;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">use_rep</span><span class="o">=</span><span class="s2">&quot;X_pca&quot;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">calculate_dendrogram_on_cosg_scores</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">top_n_genes</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">radius_step</span><span class="o">=</span><span class="mf">1.5</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">cmap</span><span class="o">=</span><span class="s2">&quot;Purples&quot;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">gene_label_offset</span><span class="o">=</span><span class="mf">0.25</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">gene_label_color</span><span class="o">=</span><span class="s2">&quot;black&quot;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">linkage_method</span><span class="o">=</span><span class="s2">&quot;ward&quot;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">distance_metric</span><span class="o">=</span><span class="s2">&quot;correlation&quot;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">collapse_threshold</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">palette</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">gene_color_min</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">gene_color_max</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">font_outline</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">figure_size</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span><span class="mi">10</span><span class="p">),</span>
+<span class="gp">... </span>    <span class="n">colorbar_width</span><span class="o">=</span><span class="mf">0.02</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">layer</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">gene_size_scale</span><span class="o">=</span><span class="mi">300</span>
+<span class="gp">... </span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cosg.plotMarkerDotplot">
+<span class="sig-prename descclassname"><span class="pre">cosg.</span></span><span class="sig-name descname"><span class="pre">plotMarkerDotplot</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">adata</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">groupby</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">top_n_genes</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">3</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_rep</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'X_pca'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">layer</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">key_cosg</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'cosg'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">swap_axes</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">standard_scale</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'var'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cmap</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'Spectral_r'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">dotplot_kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cosg.plotMarkerDotplot" title="Link to this definition">#</a></dt>
+<dd><p>Generate a dot plot of top marker genes identified by COSG.</p>
+<p>The function computes the cell cluster ordering using a dendrogram (if <cite>use_rep</cite> is provided)
+or derives it from <cite>adata.obs[groupby]</cite>, extracts the top marker genes identified by COSG,
+and plots a dotplot using Scanpy’s <cite>sc.pl.dotplot</cite>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>adata</strong> – Annotated data object that includes COSG results.</p></li>
+<li><p><strong>groupby</strong> (<em>str</em>) – The cell group key in <cite>adata.obs</cite>, should match with the <cite>groupby</cite> parameter used in COSG.</p></li>
+<li><p><strong>top_n_genes</strong> (<em>int</em><em>, </em><em>optional</em><em> (</em><em>default: 3</em><em>)</em>) – The number of top marker genes to show for each group.</p></li>
+<li><p><strong>use_rep</strong> (<em>str</em><em>, </em><em>optional</em><em> (</em><em>default: 'X_pca'</em><em>)</em>) – The cell low-dimensional representation key (e.g., PCA, UMAP) in <cite>adata.obsm</cite> used to compute the dendrogram.</p></li>
+<li><p><strong>layer</strong> (<em>str</em><em> or </em><em>None</em><em>, </em><em>optional</em>) – The layer key to use for expression values in the dotplot (default: None).</p></li>
+<li><p><strong>key_cosg</strong> (<em>str</em><em>, </em><em>optional</em><em> (</em><em>default: 'cosg'</em><em>)</em>) – The key in <cite>adata.uns</cite> where COSG results are stored.</p></li>
+<li><p><strong>swap_axes</strong> (<em>bool</em><em>, </em><em>optional</em><em> (</em><em>default: False</em><em>)</em>) – Whether to swap axes in the dot plot.</p></li>
+<li><p><strong>standard_scale</strong> (<em>str</em><em> or </em><em>None</em><em>, </em><em>optional</em>) – Whether to standardize expression values across <cite>‘var’</cite> (genes) or <cite>‘group’</cite> (cell groups or clusters).
+Can be <cite>‘var’</cite>, <cite>‘group’</cite>, or <cite>None</cite> (default: <cite>‘var’</cite>).</p></li>
+<li><p><strong>cmap</strong> (<em>str</em><em>, </em><em>optional</em><em> (</em><em>default: 'Spectral_r'</em><em>)</em>) – The colormap used for the dot plot.</p></li>
+<li><p><strong>save</strong> (<em>str</em><em> or </em><em>None</em><em>, </em><em>optional</em>) – If provided, saves the plot to a file. The filename should include an extension (e.g., <cite>“cosg_markers.pdf”</cite>).</p></li>
+<li><p><strong>**dotplot_kwargs</strong> (<em>dict</em>) – Additional keyword arguments to pass to <cite>sc.pl.dotplot</cite>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Displays the dot plot.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>ValueError</strong> – If required COSG results or dendrogram information are missing, or if the provided <cite>groupby</cite>
+    does not match the one stored in COSG parameters.</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">scanpy</span> <span class="k">as</span> <span class="nn">sc</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">cosg</span>  <span class="c1"># Assuming plotDotPlot is part of the cosg package</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">adata</span> <span class="o">=</span> <span class="n">sc</span><span class="o">.</span><span class="n">datasets</span><span class="o">.</span><span class="n">pbmc68k_reduced</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Using a specific low-dimensional representation for dendrogram computation and cell type ordering:</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">cosg</span><span class="o">.</span><span class="n">plotMarkerDotplot</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">adata</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">groupby</span><span class="o">=</span><span class="s1">&#39;bulk_labels&#39;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">top_n_genes</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">key_cosg</span><span class="o">=</span><span class="s1">&#39;cosg&#39;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">use_rep</span><span class="o">=</span><span class="s1">&#39;X_pca&#39;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">swap_axes</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">standard_scale</span><span class="o">=</span><span class="s1">&#39;var&#39;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">cmap</span><span class="o">=</span><span class="s1">&#39;Spectral_r&#39;</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Deriving cell order from adata.obs when use_rep is None:</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">cosg</span><span class="o">.</span><span class="n">plotMarkerDotplot</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">adata</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">groupby</span><span class="o">=</span><span class="s1">&#39;bulk_labels&#39;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">top_n_genes</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">key_cosg</span><span class="o">=</span><span class="s1">&#39;cosg&#39;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">use_rep</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">swap_axes</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">standard_scale</span><span class="o">=</span><span class="s1">&#39;var&#39;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">cmap</span><span class="o">=</span><span class="s1">&#39;Spectral_r&#39;</span>
+<span class="gp">... </span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="modules.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">API</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="references.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">References</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#cosg.cosg"><code class="docutils literal notranslate"><span class="pre">cosg()</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#cosg.indexByGene"><code class="docutils literal notranslate"><span class="pre">indexByGene()</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#cosg.iqrLogNormalize"><code class="docutils literal notranslate"><span class="pre">iqrLogNormalize()</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#cosg.plotMarkerDendrogram"><code class="docutils literal notranslate"><span class="pre">plotMarkerDendrogram()</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#cosg.plotMarkerDotplot"><code class="docutils literal notranslate"><span class="pre">plotMarkerDotplot()</span></code></a></li>
+</ul>
+  </nav></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2021-2025, Min Dai.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.3.7.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

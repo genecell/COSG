@@ -1,0 +1,1341 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Tutorial at first release (v1.0.1) &#8212; COSG v1.0.2 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=362ab14a" />
+    <link rel="stylesheet" type="text/css" href="../_static/nbsphinx-code-cells.css?v=2aa19091" />
+    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=0330b353" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../_static/documentation_options.js?v=e562d664"></script>
+    <script src="../_static/doctools.js?v=9a2dae69"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+    <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'notebooks/COSG-tutorial';</script>
+    <script src="../_static/sidebar_toggle.js?v=3b053ec6"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="API" href="../modules.html" />
+    <link rel="prev" title="Marker gene identification with COSG" href="20_COSG_tutorial.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class=" navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../_static/COSG_logo.png" class="logo__image only-light" alt="COSG v1.0.2 documentation - Home"/>
+    <img src="../_static/COSG_logo.png" class="logo__image only-dark pst-js-only" alt="COSG v1.0.2 documentation - Home"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class=" navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../installation.html">
+    Installation
+  </a>
+</li>
+
+
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="../tutorials.html">
+    Tutorials
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../modules.html">
+    API
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../references.html">
+    References
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../releaseNotes.html">
+    Release notes
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/genecell/COSG" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../installation.html">
+    Installation
+  </a>
+</li>
+
+
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="../tutorials.html">
+    Tutorials
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../modules.html">
+    API
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../references.html">
+    References
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../releaseNotes.html">
+    Release notes
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/genecell/COSG" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<h3><a href="../index.html">Table of Contents</a></h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../tutorials.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../modules.html">API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../references.html">References</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../releaseNotes.html">Release notes</a></li>
+</ul>
+</div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../tutorials.html" class="nav-link">Tutorials</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">Tutorial at first release (v1.0.1)</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="Tutorial-at-first-release-(v1.0.1)">
+<h1>Tutorial at first release (v1.0.1)<a class="headerlink" href="#Tutorial-at-first-release-(v1.0.1)" title="Link to this heading">#</a></h1>
+<section id="Basic-settings">
+<h2>Basic settings<a class="headerlink" href="#Basic-settings" title="Link to this heading">#</a></h2>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>import numpy as np
+import pandas as pd
+import scanpy as sc
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>sc.settings.verbosity = 3
+sc.logging.print_header()
+sc.settings.set_figure_params(dpi=80, facecolor=&#39;white&#39;)
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+scanpy==1.6.1 anndata==0.7.5 umap==0.4.6 numpy==1.19.5 scipy==1.5.3 pandas==1.1.5 scikit-learn==0.24.0 statsmodels==0.12.1 python-igraph==0.8.3 louvain==0.7.0 leidenalg==0.8.3
+</pre></div></div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[35]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>save_dir=&#39;./&#39; ## need to change the directory
+sc.settings.figdir = save_dir
+</pre></div>
+</div>
+</div>
+</section>
+<section id="Import-data">
+<h2>Import data<a class="headerlink" href="#Import-data" title="Link to this heading">#</a></h2>
+<p>The data could be downloaded from <a class="reference external" href="https://drive.google.com/drive/folders/1MZEaM28PHW4FTSKzy-h_OqPnSlRKiYKW?usp=sharing">https://drive.google.com/drive/folders/1MZEaM28PHW4FTSKzy-h_OqPnSlRKiYKW?usp=sharing</a>.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>%%time
+adata=sc.read(&#39;./Hochgerner_dentate_gyrus_QC.h5ad&#39;) ## need to change the directory
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+CPU times: user 174 ms, sys: 237 ms, total: 412 ms
+Wall time: 410 ms
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>np.unique(adata.obs[&#39;CellTypes&#39;])
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+array([&#39;Astro-adult&#39;, &#39;Astro-juv&#39;, &#39;CA3-Pyr&#39;, &#39;Cajal-Retzius&#39;,
+       &#39;Endothelial&#39;, &#39;Ependymal&#39;, &#39;GABA&#39;, &#39;GC-adult&#39;, &#39;GC-juv&#39;,
+       &#39;Immature-Astro&#39;, &#39;Immature-GABA&#39;, &#39;Immature-GC&#39;, &#39;Immature-Pyr&#39;,
+       &#39;MOL&#39;, &#39;MiCajal-Retziusoglia&#39;, &#39;NFOL&#39;, &#39;Neuroblast&#39;, &#39;OPC&#39;, &#39;PVM&#39;,
+       &#39;RGL&#39;, &#39;RGL_young&#39;, &#39;VLMC&#39;, &#39;nIPC&#39;, &#39;nIPC-perin&#39;], dtype=object)
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>len(np.unique(adata.obs[&#39;CellTypes&#39;]))
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+24
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>adata
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+AnnData object with n_obs × n_vars = 23025 × 19444
+    obs: &#39;source name&#39;, &#39;organism&#39;, &#39;characteristics: strain&#39;, &#39;characteristics: age&#39;, &#39;characteristics: sex of pooled animals&#39;, &#39;characteristics: cell cluster&#39;, &#39;molecule&#39;, &#39;SRR run accession&#39;, &#39;raw file (original file name)&#39;, &#39;UMI_CellularBarcode&#39;, &#39;CellTypes&#39;, &#39;n_genes&#39;, &#39;n_genes_by_counts&#39;, &#39;total_counts&#39;, &#39;total_counts_mt&#39;, &#39;pct_counts_mt&#39;
+    var: &#39;n_cells&#39;, &#39;mt&#39;, &#39;n_cells_by_counts&#39;, &#39;mean_counts&#39;, &#39;pct_dropout_by_counts&#39;, &#39;total_counts&#39;
+    uns: &#39;CellTypes_colors&#39;
+</pre></div></div>
+</div>
+<p>Note: the data is already filtered after proper quality control.</p>
+</section>
+<section id="Normalization">
+<h2>Normalization<a class="headerlink" href="#Normalization" title="Link to this heading">#</a></h2>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>sc.pp.normalize_total(adata, target_sum=1e4)
+sc.pp.log1p(adata)
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+normalizing counts per cell
+    finished (0:00:00)
+</pre></div></div>
+</div>
+</section>
+<section id="HVG-identification">
+<h2>HVG identification<a class="headerlink" href="#HVG-identification" title="Link to this heading">#</a></h2>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>sc.pp.highly_variable_genes(adata,
+                            n_top_genes=3000
+                           )
+print(sum(adata.var.highly_variable))
+sc.pl.highly_variable_genes(adata)
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+If you pass `n_top_genes`, all cutoffs are ignored.
+extracting highly variable genes
+    finished (0:00:01)
+--&gt; added
+    &#39;highly_variable&#39;, boolean vector (adata.var)
+    &#39;means&#39;, float vector (adata.var)
+    &#39;dispersions&#39;, float vector (adata.var)
+    &#39;dispersions_norm&#39;, float vector (adata.var)
+3000
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/notebooks_COSG-tutorial_15_1.png" class="no-scaled-link" src="../_images/notebooks_COSG-tutorial_15_1.png" style="width: 559px; height: 308px;" />
+</div>
+</div>
+</section>
+<section id="Run-PCA">
+<h2>Run PCA<a class="headerlink" href="#Run-PCA" title="Link to this heading">#</a></h2>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>use_highly_variable=True
+from sklearn.preprocessing import StandardScaler
+expr = adata[:, adata.var[&#39;highly_variable&#39;]].X if use_highly_variable else adata.X
+expr=StandardScaler(with_mean=False).fit_transform(expr)
+expr[expr &gt; 10] = 10
+from sklearn.decomposition import TruncatedSVD
+transformer = TruncatedSVD(n_components=50, random_state=42)
+adata.obsm[&#39;X_pca&#39;]= transformer.fit_transform(expr)
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>sc.pl.pca(adata,color=&#39;CellTypes&#39;)
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/notebooks_COSG-tutorial_18_0.png" class="no-scaled-link" src="../_images/notebooks_COSG-tutorial_18_0.png" style="width: 592px; height: 296px;" />
+</div>
+</div>
+</section>
+<section id="Reorder-the-CellTypes">
+<h2>Reorder the CellTypes<a class="headerlink" href="#Reorder-the-CellTypes" title="Link to this heading">#</a></h2>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>%%time
+sc.tl.dendrogram(adata,groupby=&#39;CellTypes&#39;,use_rep=&#39;X_pca&#39;)
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Storing dendrogram info using `.uns[&#34;dendrogram_[&#39;CellTypes&#39;]&#34;]`
+CPU times: user 11.5 ms, sys: 3.96 ms, total: 15.4 ms
+Wall time: 13.6 ms
+</pre></div></div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[12]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>celltype=adata.obs[&#39;CellTypes&#39;].values.copy()
+new_order=adata.uns[&quot;dendrogram_[&#39;CellTypes&#39;]&quot;][&#39;categories_ordered&#39;]
+celltype=celltype.reorder_categories(new_order)
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[13]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>adata.obs[&#39;CellTypes&#39;]=celltype
+</pre></div>
+</div>
+</div>
+</section>
+<section id="Run-UMAP">
+<h2>Run UMAP<a class="headerlink" href="#Run-UMAP" title="Link to this heading">#</a></h2>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[14]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>%%time
+sc.pp.neighbors(adata,
+               n_neighbors=15,random_state=10,knn=True,
+                method=&quot;umap&quot;)
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+computing neighbors
+    using &#39;X_pca&#39; with n_pcs = 50
+    finished: added to `.uns[&#39;neighbors&#39;]`
+    `.obsp[&#39;distances&#39;]`, distances for each pair of neighbors
+    `.obsp[&#39;connectivities&#39;]`, weighted adjacency matrix (0:00:20)
+CPU times: user 33.4 s, sys: 16 s, total: 49.4 s
+Wall time: 20.9 s
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[15]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>%%time
+sc.tl.umap(adata)
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+computing UMAP
+    finished: added
+    &#39;X_umap&#39;, UMAP coordinates (adata.obsm) (0:00:14)
+CPU times: user 57.5 s, sys: 2min 26s, total: 3min 23s
+Wall time: 14.7 s
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[16]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>%%time
+sc.pl.umap(adata,
+           color=[&#39;CellTypes&#39;],
+           palette=sc.pl.palettes.default_102,
+           size=10,
+           frameon=True)
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/notebooks_COSG-tutorial_26_0.png" class="no-scaled-link" src="../_images/notebooks_COSG-tutorial_26_0.png" style="width: 592px; height: 296px;" />
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+CPU times: user 1.34 s, sys: 48.9 ms, total: 1.38 s
+Wall time: 1.38 s
+</pre></div></div>
+</div>
+</section>
+<section id="Marker-gene-identification">
+<h2>Marker gene identification<a class="headerlink" href="#Marker-gene-identification" title="Link to this heading">#</a></h2>
+<section id="1.-COSG">
+<h3>1. COSG<a class="headerlink" href="#1.-COSG" title="Link to this heading">#</a></h3>
+<p>Import COSG:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[46]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>import cosg as cosg
+import importlib
+importlib.reload(cosg)
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[46]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+&lt;module &#39;cosg&#39; from &#39;/platinum-2/daimin/analysis/jupyter/python/cosg.py&#39;&gt;
+</pre></div></div>
+</div>
+<p>Print the usgae:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[47]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>help(cosg.cosg)
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Help on function cosg in module cosg:
+
+cosg(adata, groupby=&#39;CellTypes&#39;, groups:Union[typing_extensions.Literal[&#39;all&#39;], Iterable[str]]=&#39;all&#39;, mu=1, remove_lowly_expressed:bool=False, expressed_pct:Union[float, NoneType]=0.1, n_genes_user:int=50, key_added:Union[str, NoneType]=None, use_raw:bool=True, layer:Union[str, NoneType]=None, reference:str=&#39;rest&#39;, copy:bool=False)
+    Marker gene identification for single-cell sequencing data using COSG.
+    Parameters
+    ----------
+    adata
+        Annotated data matrix. Note: input paramters are simliar to the parameters used for scanpy&#39;s rank_genes_groups() function.
+    groupby
+        The key of the cell groups in .obs, the default value is set to &#39;CellTypes&#39;.
+    groups
+        Subset of cell groups, e.g. [`&#39;g1&#39;`, `&#39;g2&#39;`, `&#39;g3&#39;`], to which comparison shall be restricted. The default value is &#39;all&#39;, and all groups will be compared.
+    mu
+        The penalty restricting marker genes expressing in non-target cell groups. Larger value represents more strict restrictions. mu should be &gt;= 0, and by default, mu = 1.
+    remove_lowly_expressed
+        If True, genes that express a percentage of target cells smaller than a specific value (`expressed_pct`) are not considered as marker genes for the target cells. The default value is False.
+    expressed_pct
+        When `remove_lowly_expressed` is set to True, genes that express a percentage of target cells smaller than a specific value (`expressed_pct`) are not considered as marker genes for the target cells. The default value for `expressed_pct`
+        is 0.1 (10%).
+    n_genes_user
+        The number of genes that appear in the returned tables. The default value is 50.
+    key_added
+        The key in `adata.uns` information is saved to.
+    use_raw
+        Use `raw` attribute of `adata` if present.
+    layer
+        Key from `adata.layers` whose value will be used to perform tests on.
+    reference
+        If `&#39;rest&#39;`, compare each group to the union of the rest of the group.
+        If a group identifier, compare with respect to this group.
+
+    Returns
+    -------
+    **names** : structured `np.ndarray` (`.uns[&#39;rank_genes_groups&#39;]`)
+        Structured array to be indexed by group id storing the gene names. Ordered according to scores.
+    **scores** : structured `np.ndarray` (`.uns[&#39;rank_genes_groups&#39;]`)
+        Structured array to be indexed by group id storing COSG scores for each gene for each
+        group. Ordered according to scores.
+    Notes
+    -----
+    Contact: daimin@zju.edu.cn
+    Examples
+    --------
+    &gt;&gt;&gt; import cosg as cosg
+    &gt;&gt;&gt; import scanpy as sc
+    &gt;&gt;&gt; adata = sc.datasets.pbmc68k_reduced()
+    &gt;&gt;&gt; cosg.cosg(adata, key_added=&#39;cosg&#39;, groupby=&#39;bulk_labels&#39;)
+    &gt;&gt;&gt; sc.pl.rank_genes_groups(adata, key=&#39;cosg&#39;)
+
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[49]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>%%time
+import time
+t0= time.clock()
+cosg.cosg(adata,
+    key_added=&#39;cosg&#39;,
+        mu=1,
+        n_genes_user=50,
+               groupby=&#39;CellTypes&#39;)
+runtime_cosg = time.clock() - t0
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+**finished identifying marker genes by COSG**
+CPU times: user 2.7 s, sys: 343 ms, total: 3.04 s
+Wall time: 3.04 s
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[50]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>sc.tl.dendrogram(adata,groupby=&#39;CellTypes&#39;,use_rep=&#39;X_pca&#39;)
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Storing dendrogram info using `.uns[&#34;dendrogram_[&#39;CellTypes&#39;]&#34;]`
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[51]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>sc.pl.rank_genes_groups_dotplot(adata,groupby=&#39;CellTypes&#39;,
+                                cmap=&#39;Spectral_r&#39;,
+                                 standard_scale=&#39;var&#39;,
+                                       n_genes=3,key=&#39;cosg&#39;)
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/notebooks_COSG-tutorial_35_0.png" class="no-scaled-link" src="../_images/notebooks_COSG-tutorial_35_0.png" style="width: 1956px; height: 781px;" />
+</div>
+</div>
+</section>
+<section id="2.-Logistic-regression">
+<h3>2. Logistic regression<a class="headerlink" href="#2.-Logistic-regression" title="Link to this heading">#</a></h3>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[29]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>%%time
+t0= time.clock()
+sc.tl.rank_genes_groups(adata,
+                        groupby=&#39;CellTypes&#39;,
+                        method=&#39;logreg&#39;,
+                        key_added=&#39;logreg&#39;,
+                        n_genes=50)
+runtime_logreg = time.clock() - t0
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+ranking genes
+    finished: added to `.uns[&#39;logreg&#39;]`
+    &#39;names&#39;, sorted np.recarray to be indexed by group ids
+    &#39;scores&#39;, sorted np.recarray to be indexed by group ids
+ (0:03:16)
+CPU times: user 15min 34s, sys: 52min 18s, total: 1h 7min 52s
+Wall time: 3min 16s
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+/platinum-2/daimin/software/miniconda3/envs/scda3/lib/python3.6/site-packages/sklearn/linear_model/_logistic.py:765: ConvergenceWarning: lbfgs failed to converge (status=1):
+STOP: TOTAL NO. of ITERATIONS REACHED LIMIT.
+
+Increase the number of iterations (max_iter) or scale the data as shown in:
+    https://scikit-learn.org/stable/modules/preprocessing.html
+Please also refer to the documentation for alternative solver options:
+    https://scikit-learn.org/stable/modules/linear_model.html#logistic-regression
+  extra_warning_msg=_LOGISTIC_SOLVER_CONVERGENCE_MSG)
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[30]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>sc.pl.rank_genes_groups_dotplot(adata,groupby=&#39;CellTypes&#39;,
+                                cmap=&#39;Spectral_r&#39;,
+                                 standard_scale=&#39;var&#39;,
+                                       n_genes=3,key=&#39;logreg&#39;)
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/notebooks_COSG-tutorial_38_0.png" class="no-scaled-link" src="../_images/notebooks_COSG-tutorial_38_0.png" style="width: 1956px; height: 781px;" />
+</div>
+</div>
+</section>
+<section id="3.-Wilcoxon-test">
+<h3>3. Wilcoxon-test<a class="headerlink" href="#3.-Wilcoxon-test" title="Link to this heading">#</a></h3>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[31]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>%%time
+t0= time.clock()
+sc.tl.rank_genes_groups(adata, groupby=&#39;CellTypes&#39;,
+                        tie_correct=False,
+                        method=&#39;wilcoxon&#39;,
+                        key_added=&#39;wilcoxon&#39;,n_genes=50)
+runtime_wilcoxon= time.clock() - t0
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+ranking genes
+    finished: added to `.uns[&#39;wilcoxon&#39;]`
+    &#39;names&#39;, sorted np.recarray to be indexed by group ids
+    &#39;scores&#39;, sorted np.recarray to be indexed by group ids
+    &#39;logfoldchanges&#39;, sorted np.recarray to be indexed by group ids
+    &#39;pvals&#39;, sorted np.recarray to be indexed by group ids
+    &#39;pvals_adj&#39;, sorted np.recarray to be indexed by group ids (0:00:46)
+CPU times: user 37.5 s, sys: 8.72 s, total: 46.2 s
+Wall time: 46.2 s
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[32]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>sc.pl.rank_genes_groups_dotplot(adata,groupby=&#39;CellTypes&#39;,
+                                cmap=&#39;Spectral_r&#39;,
+                                 standard_scale=&#39;var&#39;,
+                                       n_genes=3,key=&#39;wilcoxon&#39;)
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/notebooks_COSG-tutorial_41_0.png" class="no-scaled-link" src="../_images/notebooks_COSG-tutorial_41_0.png" style="width: 1956px; height: 738px;" />
+</div>
+</div>
+</section>
+<section id="4.-Wilcoxon-test-(TIE)">
+<h3>4. Wilcoxon-test (TIE)<a class="headerlink" href="#4.-Wilcoxon-test-(TIE)" title="Link to this heading">#</a></h3>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[33]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>%%time
+t0= time.clock()
+sc.tl.rank_genes_groups(adata, groupby=&#39;CellTypes&#39;,
+                        tie_correct=True,
+                        method=&#39;wilcoxon&#39;,
+                        key_added=&#39;wilcoxon_tie&#39;,n_genes=50)
+runtime_wilcoxon_tie = time.clock() - t0
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+ranking genes
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+/platinum-2/daimin/software/miniconda3/envs/scda3/lib/python3.6/site-packages/scanpy/tools/_rank_genes_groups.py:313: RuntimeWarning: invalid value encountered in true_divide
+  ) / std_dev
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+    finished: added to `.uns[&#39;wilcoxon_tie&#39;]`
+    &#39;names&#39;, sorted np.recarray to be indexed by group ids
+    &#39;scores&#39;, sorted np.recarray to be indexed by group ids
+    &#39;logfoldchanges&#39;, sorted np.recarray to be indexed by group ids
+    &#39;pvals&#39;, sorted np.recarray to be indexed by group ids
+    &#39;pvals_adj&#39;, sorted np.recarray to be indexed by group ids (0:15:23)
+CPU times: user 12min 45s, sys: 2min 38s, total: 15min 23s
+Wall time: 15min 23s
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[34]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>sc.pl.rank_genes_groups_dotplot(adata,groupby=&#39;CellTypes&#39;,
+                                cmap=&#39;Spectral_r&#39;,
+                                 standard_scale=&#39;var&#39;,
+                                       n_genes=3,key=&#39;wilcoxon_tie&#39;)
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/notebooks_COSG-tutorial_44_0.png" class="no-scaled-link" src="../_images/notebooks_COSG-tutorial_44_0.png" style="width: 1956px; height: 781px;" />
+</div>
+</div>
+</section>
+</section>
+<section id="Runtime-comparison">
+<h2>Runtime comparison<a class="headerlink" href="#Runtime-comparison" title="Link to this heading">#</a></h2>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[71]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>print( [runtime_logreg, runtime_wilcoxon, runtime_wilcoxon_tie, runtime_cosg] )
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+[4072.48, 46.220000000000255, 923.6999999999998, 3.0299999999997453]
+</pre></div></div>
+</div>
+</section>
+<section id="Violin-plots">
+<h2>Violin plots<a class="headerlink" href="#Violin-plots" title="Link to this heading">#</a></h2>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[52]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>celltype_selected= &#39;GC-adult&#39;
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[53]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>adata_selected=adata[adata.obs[&#39;CellTypes&#39;].isin([&#39;CA3-Pyr&#39;,  &#39;GC-adult&#39;, &#39;GC-juv&#39;])]
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[56]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>marker_violin=np.hstack([pd.DataFrame(adata.uns[&#39;logreg&#39;][&#39;names&#39;])[celltype_selected][:3].values,
+pd.DataFrame(adata.uns[&#39;wilcoxon&#39;][&#39;names&#39;])[celltype_selected][:3].values,
+pd.DataFrame(adata.uns[&#39;wilcoxon_tie&#39;][&#39;names&#39;])[celltype_selected][:3].values,
+pd.DataFrame(adata.uns[&#39;cosg&#39;][&#39;names&#39;])[celltype_selected][:3].values])
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[57]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>marker_violin
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[57]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+array([&#39;Marf1&#39;, &#39;Pcp4&#39;, &#39;Actb&#39;, &#39;Ppp3ca&#39;, &#39;Fth1&#39;, &#39;Ncdn&#39;, &#39;Ppp3ca&#39;,
+       &#39;C1ql3&#39;, &#39;Ncdn&#39;, &#39;Zmym1&#39;, &#39;Ntng1&#39;, &#39;Rasl10a&#39;], dtype=object)
+</pre></div></div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[66]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>vp=sc.pl.stacked_violin(adata_selected,
+                     marker_violin,
+                     groupby=&#39;CellTypes&#39;,
+                     swap_axes=True,
+                     figsize=(4, 9),
+                     scale=&#39;width&#39;,
+                     yticklabels=True,
+                     size=0.2,
+                     inner=&#39;box&#39;,
+                     cut=True,
+                     return_fig=True,
+                    )
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[67]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>icolor=[ &quot;#ffe119&quot;, # Logistic regression
+                  &quot;#e6194b&quot;,   # Wilcoxon-test
+                 &quot;#4363d8&quot;,  # Wilcoxon-test (TIE)
+                    &quot;#3cb44b&quot; # COSG ,
+       ]
+icolor=np.hstack([np.repeat(i,3) for i in icolor])
+icolor
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[67]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+array([&#39;#ffe119&#39;, &#39;#ffe119&#39;, &#39;#ffe119&#39;, &#39;#e6194b&#39;, &#39;#e6194b&#39;, &#39;#e6194b&#39;,
+       &#39;#4363d8&#39;, &#39;#4363d8&#39;, &#39;#4363d8&#39;, &#39;#3cb44b&#39;, &#39;#3cb44b&#39;, &#39;#3cb44b&#39;],
+      dtype=&#39;&lt;U7&#39;)
+</pre></div></div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[68]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>icolor=list(icolor)
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[69]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>vp.style(ylim=(0,6),
+         row_palette=icolor,yticklabels=True,).show()
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/notebooks_COSG-tutorial_55_0.png" class="no-scaled-link" src="../_images/notebooks_COSG-tutorial_55_0.png" style="width: 209px; height: 622px;" />
+</div>
+</div>
+</section>
+<section id="Save-the-data">
+<h2>Save the data<a class="headerlink" href="#Save-the-data" title="Link to this heading">#</a></h2>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[36]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>adata.write(save_dir+&#39;/COSG_tutorial_Hochgerner_dentate_gyrus_QC.h5ad&#39;)
+</pre></div>
+</div>
+</div>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="20_COSG_tutorial.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">Marker gene identification with COSG</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="../modules.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">API</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#Basic-settings">Basic settings</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#Import-data">Import data</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#Normalization">Normalization</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#HVG-identification">HVG identification</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#Run-PCA">Run PCA</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#Reorder-the-CellTypes">Reorder the CellTypes</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#Run-UMAP">Run UMAP</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#Marker-gene-identification">Marker gene identification</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#1.-COSG">1. COSG</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#2.-Logistic-regression">2. Logistic regression</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#3.-Wilcoxon-test">3. Wilcoxon-test</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#4.-Wilcoxon-test-(TIE)">4. Wilcoxon-test (TIE)</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#Runtime-comparison">Runtime comparison</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#Violin-plots">Violin plots</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#Save-the-data">Save the data</a></li>
+</ul>
+  </nav></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2021-2025, Min Dai.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.3.7.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

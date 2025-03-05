@@ -1,0 +1,16 @@
+Release notes
+=============
+
+Release 1.0.2 (released Mar 5, 2025)
+------------------------------------
+
+- Add plotMarkerDotplot and plotMarkerDendrogram for marker gene visualization.
+- Add support for batch_key.
+- Add support for calculation of normalized COSG scores.
+- Fix an error related to scipy version (.A depreciation), and an warning related to DataFrame manipulation.
+- Add verbosity control.
+
+
+Release 1.0.1 (released June 15, 2021)
+--------------------------------------
+First release in PyPI.

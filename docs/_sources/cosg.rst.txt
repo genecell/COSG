@@ -1,0 +1,12 @@
+cosg package
+============
+.. automodule:: cosg
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :private-members:
+.. autofunction:: cosg
+.. autofunction:: indexByGene
+.. autofunction:: iqrLogNormalize
+.. autofunction:: plotMarkerDendrogram
+.. autofunction:: plotMarkerDotplot

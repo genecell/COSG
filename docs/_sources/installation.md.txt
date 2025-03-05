@@ -1,0 +1,13 @@
+## Installation
+
+### Stable version
+
+```
+pip install cosg
+```
+
+### Development version
+ 
+```
+pip install git+https://github.com/genecell/COSG.git
+```
