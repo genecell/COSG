@@ -39,12 +39,14 @@ from sklearn.metrics.pairwise import cosine_similarity
 
 def cosg(
     adata,
-    groupby = 'CellTypes',
+    groupby: str = 'CellTypes',
     groups: Union[Literal['all'], Iterable[str]] = 'all',
-    mu:float=1,
+    mu: float = 1,
     remove_lowly_expressed: bool= False,
     expressed_pct: Optional[float] = 0.1,
     n_genes_user: int = 50,
+    batch_key: str = None,
+    batch_cell_number_threshold: int = 3,
     key_added: Optional[str] = None,
     calculate_logfoldchanges: bool = False,
     use_raw: bool = True,
@@ -70,10 +72,16 @@ def cosg(
     remove_lowly_expressed
         If True, genes that express a percentage of target cells smaller than a specific value (`expressed_pct`) are not considered as marker genes for the target cells. The default value is False.
     expressed_pct
-        When `remove_lowly_expressed` is set to True, genes that express a percentage of target cells smaller than a specific value (`expressed_pct`) are not considered as marker genes for the target cells. The default value for `expressed_pct`
-        is 0.1 (10%).
+        When `remove_lowly_expressed` is set to True, genes that express a percentage of target cells smaller than a specific value (`expressed_pct`) are not considered as marker genes for the target cells. The default value for `expressed_pct` is 0.1 (10%).
     n_genes_user
         The number of genes that appear in the returned tables. The default value is 50.
+    batch_key
+        Used to indicate which batch info in `adata.obs` to use for calculate the cosine similarities separately for each batch
+        and then average them. The default value is None.
+    batch_cell_number_threshold : int, default 3
+        Minimum number of cells required in a batch for a given cluster to be considered
+        for computing the cosine similarity score when `batch_key` is not None. If a cluster has fewer than this number of cells
+        in a batch, the cosine similarity from that batch for the cluster will be ignored in the average.
     key_added
         The key in `adata.uns` information is saved to.
     calculate_logfoldchanges
@@ -190,9 +198,99 @@ def cosg(
     data = np.ones_like(col_indices, dtype=int)
     cluster_mat = csr_matrix((data, (row_indices, col_indices)), shape=(n_cluster, n_cell))
     
+    ### Provide a batch_key option
+    if batch_key is not None:
+        
+        batch_info = adata.obs[batch_key].values  
+        unique_batches = np.unique(batch_info)
+
+        n_gene = cellxgene.shape[1]  # number of genes
+        
+        if sparse.issparse(cellxgene):
+            # Initialize a sparse accumulator and valid count vector
+            accum = sparse.csr_matrix((n_gene, n_cluster), dtype=float)
+            
+            ### This vector is used to keep track of how many batches provide valid
+            ### (i.e. above the batch_cell_number_threshold) data for each cluster. 
+            valid_counts = np.zeros(n_cluster, dtype=float)
+
+            for batch in unique_batches:
+                indices = np.flatnonzero(batch_info == batch)
+                if indices.size == 0:
+                    continue
+
+                # Compute number of cells per cluster for this batch.
+                cluster_counts = np.array(cluster_mat[:, indices].sum(axis=1)).flatten()
+                # valid_mask: 1.0 for clusters with enough cells, 0.0 otherwise
+                valid_mask = (cluster_counts >= batch_cell_number_threshold).astype(float)
+                if not np.any(valid_mask):
+                    continue
+
+                # Compute cosine similarity for the batch (sparse output)
+                sim_batch = cosine_similarity(
+                    X=cellxgene[indices].T,
+                    Y=cluster_mat[:, indices],
+                    dense_output=False
+                )  # shape: (n_gene, n_cluster)
+                # Multiply each column by valid_mask using a sparse diagonal matrix
+                valid_diag = sparse.diags(valid_mask)
+                sim_batch_valid = sim_batch.dot(valid_diag)
+
+                accum = accum + sim_batch_valid
+                valid_counts += valid_mask
+
+            # Create a diagonal matrix for column-wise division.
+            # For clusters with valid_counts==0, we assign np.nan.
+            divisor = np.array([1/v if v > 0 else np.nan for v in valid_counts])
+            divisor_diag = sparse.diags(divisor)
+            # Multiply accumulator by divisor_diag to scale each column appropriately.
+            accum = accum.dot(divisor_diag)
+            cosine_sim = accum
+        else:
+            # Dense branch: use dense arrays.
+            accum = np.zeros((n_gene, n_cluster))
+            valid_counts = np.zeros(n_cluster)
+            for batch in unique_batches:
+                indices = np.flatnonzero(batch_info == batch)
+                if indices.size == 0:
+                    continue
+                cluster_counts = np.array(cluster_mat[:, indices].sum(axis=1)).flatten()
+                valid_mask = (cluster_counts >= batch_cell_number_threshold).astype(float)
+                if not np.any(valid_mask):
+                    continue
+                sim_batch = cosine_similarity(
+                    X=cellxgene[indices].T,
+                    Y=cluster_mat[:, indices],
+                    dense_output=True
+                )
+                sim_batch = sim_batch * valid_mask  # broadcasting valid_mask along columns
+                accum += sim_batch
+                valid_counts += valid_mask
+            for j in range(n_cluster):
+                if valid_counts[j] > 0:
+                    accum[:, j] /= valid_counts[j]
+                else:
+                    accum[:, j] = np.nan  # or zero if you prefer
+            cosine_sim = accum
+
+    else:
+        # no batch splitting
+        if sparse.issparse(cellxgene):
+            ### the dimension is: Gene x lambda
+            cosine_sim = cosine_similarity(
+                X=cellxgene.T, 
+                Y=cluster_mat, 
+                dense_output=False
+            )
+        else:
+            ### Convert to dense matrix
+            cluster_mat=cluster_mat.toarray()
+            ## Not using sparse matrix    
+            cosine_sim=cosine_similarity(X=cellxgene.T, Y=cluster_mat, dense_output=True)     
+    
     if sparse.issparse(cellxgene):
         ### the dimension is: Gene x lambda
-        cosine_sim=cosine_similarity(X=cellxgene.T,Y=cluster_mat,dense_output=False) 
+        # cosine_sim=cosine_similarity(X=cellxgene.T,Y=cluster_mat,dense_output=False) 
         
         ### Instead of using cosine_sim.multiply(cosine_sim), the following commands could keep the nonzero values order the same, which would be very useful for the downstream analysis
         ### Because all the calculation would be performed in 1D then
@@ -209,15 +307,15 @@ def cosg(
         else:
             genexlambda.data=genexlambda.data/((1 - mu) * genexlambda.data + mu * np.repeat(e_power2_sum, np.diff(genexlambda.indptr)))
         ### Because I use genexlambda.data=np.multiply(genexlambda.data, genexlambda.data), so the nonzero values order are the same
-        genexlambda.data=np.multiply(genexlambda.data,cosine_sim.data)
+        genexlambda.data=np.multiply(genexlambda.data, cosine_sim.data)
     
     ### If the cellxgene is not a sparse matrix
     else:
-        ### Convert to dense matrix
-        cluster_mat=cluster_mat.toarray()
+#         ### Convert to dense matrix
+#         cluster_mat=cluster_mat.toarray()
         
-        ## Not using sparse matrix    
-        cosine_sim=cosine_similarity(X=cellxgene.T, Y=cluster_mat, dense_output=True) 
+#         ## Not using sparse matrix    
+#         cosine_sim=cosine_similarity(X=cellxgene.T, Y=cluster_mat, dense_output=True) 
 
         pos_nonzero=cosine_sim!=0
         e_power2=np.multiply(cosine_sim,cosine_sim)
