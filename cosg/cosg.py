@@ -158,7 +158,27 @@ def cosg(
         
 
     
-    groups_order=np.unique(group_info)
+    ### Use the categorical orders if it is a categorical variable
+    if hasattr(group_info, "cat"):
+        groups_order = list(group_info.cat.categories)
+    else:
+        unique_values=group_info.unique()
+        ### add a helper function here, if the cell clusters are "1", "2", ... , "10", "11", ...
+        ### order them as "1", "2", ... , "10", "11", ..., instead of being "1", "10", "11", ..., "2", ...
+        def _is_all_numeric(groups):
+            try:
+                [float(x) for x in groups]
+                return True
+            except ValueError:
+                return False
+
+        if _is_all_numeric(unique_values):
+            groups_order = sorted(unique_values, key=lambda x: float(x))
+        else:
+            groups_order = sorted(unique_values)
+        
+    
+    
     n_cluster=len(groups_order)
     
     n_cell=cellxgene.shape[0]
