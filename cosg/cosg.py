@@ -49,7 +49,7 @@ def cosg(
     batch_cell_number_threshold: int = 3,
     key_added: Optional[str] = None,
     calculate_logfoldchanges: bool = False,
-    use_raw: bool = True,
+    use_raw: bool = False,
     layer: Optional[str] = None,
     reference: str = 'rest',
     return_by_group : bool = True,
@@ -62,51 +62,58 @@ def cosg(
     Parameters
     ----------
     adata
-        Annotated data matrix. Note: input paramters are simliar to the parameters used for scanpy's rank_genes_groups() function.
-    groupby
-        The key of the cell groups in .obs, the default value is set to 'CellTypes'.
-    groups
+        AnnData object with cell group information.
+    groupby : str, default 'CellTypes'
+        Key in `adata.obs` that defines the cell group labels. Defaults to 'CellTypes'.
+    groups : {'all'} or iterable of str, default 'all'
         Subset of cell groups, e.g. [`'g1'`, `'g2'`, `'g3'`], to which comparison shall be restricted. The default value is 'all', and all groups will be compared.
-    mu
-        The penalty restricting marker genes expressing in non-target cell groups. Larger value represents more strict restrictions. mu should be >= 0, and by default, mu = 1.
-    remove_lowly_expressed
+    mu : float, default 1
+        The penalty parameter restricting marker genes expressing in non-target cell groups. Larger value represents more strict restrictions. mu should be non-negative, and by default, mu = 1.
+    remove_lowly_expressed : bool, default False
         If True, genes that express a percentage of target cells smaller than a specific value (`expressed_pct`) are not considered as marker genes for the target cells. The default value is False.
-    expressed_pct
+    expressed_pct : float, optional, default 0.1
         When `remove_lowly_expressed` is set to True, genes that express a percentage of target cells smaller than a specific value (`expressed_pct`) are not considered as marker genes for the target cells. The default value for `expressed_pct` is 0.1 (10%).
-    n_genes_user
+    n_genes_user : int, default 50
         The number of genes that appear in the returned tables. The default value is 50.
-    batch_key
+    batch_key : str, optional, default None
         Used to indicate which batch info in `adata.obs` to use for calculate the cosine similarities separately for each batch
         and then average them. The default value is None.
     batch_cell_number_threshold : int, default 3
         Minimum number of cells required in a batch for a given cluster to be considered
         for computing the cosine similarity score when `batch_key` is not None. If a cluster has fewer than this number of cells
         in a batch, the cosine similarity from that batch for the cluster will be ignored in the average.
-    key_added
-        The key in `adata.uns` information is saved to.
-    calculate_logfoldchanges
-        Calculate logfoldchanges.
-    use_raw
-        Use `raw` attribute of `adata` if present.
-    layer
-        Key from `adata.layers` whose value will be used to perform tests on.
-    reference
-        If `'rest'`, compare each group to the union of the rest of the group.
+    key_added : str, optional, default None
+        Key under which the COSG results will be stored in `adata.uns`. If None, the default key 'cosg' is used.
+    calculate_logfoldchanges : bool, default False
+        If True, computes log fold-changes for the marker genes.
+    use_raw : bool, default False
+        If True and `adata.raw` exists, raw UMI counts saved in `adata.raw.X` are used for calculations.
+    layer : str, optional, default None
+        Key in `adata.layers` to specify an alternative gene expression layer for COSG.
+    reference : str, default 'rest'
+        Specifies the reference group for comparison. If `'rest'`, compare each group to the union of the rest of the group.
         If a group identifier, compare with respect to this group.
-    return_by_group
-        Whether return the COSG scores summarized by each group. This will output another extra copy of the results. Defaults to True.
-    verbosity
-        Controls the verbosity of logging messages, defaults to 0.
-    copy
+    return_by_group : bool, default True
+        If True, the COSG scores are also summarized and stored separately by group in adata.uns[`key_added`]['COSG']. This will output another extra copy of the results. Defaults to True.
+    verbosity : int, default 0
+        Controls the verbosity of logging messages, defaults to 0. Higher values produce more detailed messages.
+    copy: bool, default False
         If True, returns a copy of `adata` with the computed embeddings instead of modifying in place. Defaults to False.
  
     Returns
     -------
-    names : structured `np.ndarray` (`.uns['rank_genes_groups']`)
-        Structured array to be indexed by group id storing the gene names. Ordered according to scores.
-    scores : structured `np.ndarray` (`.uns['rank_genes_groups']`)
-        Structured array to be indexed by group id storing COSG scores for each gene for each
-        group. Ordered according to scores.
+    None or AnnData
+        The function stores the COSG marker gene identification results in `adata.uns[key_added]` (if `copy` is False)
+        or returns a modified copy of `adata` (if `copy` is True). The results include structured arrays containing 
+        gene names and their corresponding COSG scores for each cell group:
+
+            names : structured `np.ndarray` (`.uns['cosg']`)
+                Structured array to be indexed by group id storing the gene names. Ordered according to scores.
+            scores : structured `np.ndarray` (`.uns['cosg']`)
+            Structured array to be indexed by group id storing COSG scores for each gene for each
+                group. Ordered according to scores.
+        The marker genes and their COSG scores are also summarized and stored separately by group in
+        adata.uns[`key_added`]['COSG'] if `return_by_group = True`.
     
     Examples
     --------
@@ -114,8 +121,21 @@ def cosg(
     >>> import scanpy as sc
     >>> adata = sc.datasets.pbmc68k_reduced()
     >>> cosg.cosg(adata, key_added='cosg', groupby='bulk_labels')
-    >>> sc.pl.rank_genes_groups(adata, key='cosg')
+    >>> ### Visualize the marker genes in a dot plot
+    >>> cosg.plotMarkerDotplot(
+    ...     adata,
+    ...     groupby='bulk_labels',
+    ...     top_n_genes=3,
+    ...     key_cosg='cosg',
+    ...     use_rep=None,
+    ...     swap_axes=False,
+    ...     standard_scale='var',
+    ...     cmap='Spectral_r'
+    ... )
     """
+    ### Validate the input parameter mu
+    if mu < 0:
+        raise ValueError("Parameter mu must be non-negative.")
     
     adata = adata.copy() if copy else adata
         
@@ -132,12 +152,13 @@ def cosg(
     ### Refer to scanpy's framework
     # https://github.com/theislab/scanpy/blob/5533b644e796379fd146bf8e659fd49f92f718cd/scanpy/tools/_rank_genes_groups.py#L559
     if key_added is None:
-        key_added = 'rank_genes_groups'
+        key_added = 'cosg'
     adata.uns[key_added] = {}
     adata.uns[key_added]['params'] = dict(
         groupby=groupby,
         reference=reference,
         groups=groups,
+        batch_key=batch_key,
         method='COSG',
         use_raw=use_raw,
         layer=layer,
