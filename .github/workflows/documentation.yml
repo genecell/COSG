@@ -1,0 +1,37 @@
+name: Deploy Documentation
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+        with:
+          ref: main
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v1
+        with:
+          node-version: 20
+
+      - name: Install and Build
+        run: |
+          cd docs
+          yarn install
+          yarn build
+
+      - name: Commit and Push to /docs in main branch
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/genecell/COSG.git       
+          git add ./docs/
+          git commit -m "Deploy documentation" || echo "No changes to commit"
+          git push origin main  
