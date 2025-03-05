@@ -831,7 +831,22 @@ def plotMarkerDotplot(
         if hasattr(adata.obs[groupby], "cat"):
             ordering = list(adata.obs[groupby].cat.categories)
         else:
-            ordering = sorted(adata.obs[groupby].unique())
+            unique_values=adata.obs[groupby].unique()
+            
+            ### add a helper function here, if the cell clusters are "1", "2", ... , "10", "11", ...
+            ### order them as "1", "2", ... , "10", "11", ..., instead of being "1", "10", "11", ..., "2", ...
+            def _is_all_numeric(groups):
+                try:
+                    [float(x) for x in groups]
+                    return True
+                except ValueError:
+                    return False
+
+            if _is_all_numeric(unique_values):
+                ordering = sorted(unique_values, key=lambda x: float(x))
+            else:
+                ordering = sorted(unique_values)
+            
         
     # Extract the top_n_genes marker genes for each group from the COSG results.
     df_tmp = pd.DataFrame(adata.uns[key_cosg]['names'][:top_n_genes,]).T
