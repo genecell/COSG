@@ -43,13 +43,13 @@ Release notes
 
 March 5, 2025
 
-- Added `plotMarkerDotplot` and `plotMarkerDendrogram` for enhanced marker gene visualization. 
+- Added ``plotMarkerDotplot`` and ``plotMarkerDendrogram`` for enhanced marker gene visualization. 
 
-- Introduced support for `batch_key` to compute cosine similarities separately across different batches.  
+- Introduced support for ``batch_key`` to compute cosine similarities separately across different batches.  
 
 - Enabled calculation of normalized COSG scores for comparing gene expression specificity across cell types or datasets.  
 
-- Resolved a SciPy version deprecation issue related to `.A` attribute usage.  
+- Resolved a SciPy version deprecation issue related to ``.A`` attribute usage.  
 
 - Fixed a DataFrame manipulation warning.  
 
