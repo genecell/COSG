@@ -36,19 +36,30 @@ Documentation
 
 `COSG documentation <https://genecell.github.io/COSG/>`_.
 
+
 Release notes
 -------------
 **Release v1.0.2**  
 
-New Features  
-- Added `plotMarkerDotplot` and `plotMarkerDendrogram` for enhanced marker gene visualization.  
+March 5, 2025
+
+- Added `plotMarkerDotplot` and `plotMarkerDendrogram` for enhanced marker gene visualization. 
+
 - Introduced support for `batch_key` to compute cosine similarities separately across different batches.  
+
 - Enabled calculation of normalized COSG scores for comparing gene expression specificity across cell types or datasets.  
 
-Fixes & Improvements 
 - Resolved a SciPy version deprecation issue related to `.A` attribute usage.  
+
 - Fixed a DataFrame manipulation warning.  
+
 - Added verbosity control, allowing users to adjust log output levels.  
+
+**Release v1.0.1** 
+
+June 15, 2021
+
+- First release in PyPI. 
 
 Installation
 ------------
