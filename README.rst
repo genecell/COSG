@@ -39,9 +39,8 @@ Documentation
 
 Release notes
 -------------
-**Release v1.0.2**  
+**Release v1.0.2** (March 5, 2025)
 
-March 5, 2025
 
 - Added ``plotMarkerDotplot`` and ``plotMarkerDendrogram`` for enhanced marker gene visualization. 
 
@@ -55,9 +54,8 @@ March 5, 2025
 
 - Added verbosity control, allowing users to adjust log output levels.  
 
-**Release v1.0.1** 
+**Release v1.0.1** (June 15, 2021)
 
-June 15, 2021
 
 - First release in PyPI. 
 
