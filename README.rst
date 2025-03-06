@@ -33,14 +33,22 @@ Note: we have recently released our python toolkit, `PIASO <https://github.com/g
 
 Documentation
 --------------
-The documentation for COSG is available `here <https://cosg.readthedocs.io/en/latest/>`_.
 
+`COSG documentation <https://genecell.github.io/COSG/>`_.
 
-Tutorial
----------
+Release notes
+-------------
+**Release v1.0.2**  
 
-The `COSG tutorial <https://nbviewer.jupyter.org/github/genecell/COSG/blob/main/tutorials/COSG-tutorial.ipynb>`_ provides a quick-start guide for using COSG and demonstrates the superior performance of COSG as compared with other methods, and the `Jupyter notebook <https://github.com/genecell/COSG/blob/main/tutorials/COSG-tutorial.ipynb>`_ is also available.
+New Features  
+- Added `plotMarkerDotplot` and `plotMarkerDendrogram` for enhanced marker gene visualization.  
+- Introduced support for `batch_key` to compute cosine similarities separately across different batches.  
+- Enabled calculation of normalized COSG scores for comparing gene expression specificity across cell types or datasets.  
 
+Fixes & Improvements 
+- Resolved a SciPy version deprecation issue related to `.A` attribute usage.  
+- Fixed a DataFrame manipulation warning.  
+- Added verbosity control, allowing users to adjust log output levels.  
 
 Installation
 ------------
