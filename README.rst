@@ -9,20 +9,25 @@
 .. |Total downloads| image:: https://static.pepy.tech/personalized-badge/cosg?period=total&units=international_system&left_color=black&right_color=orange&left_text=downloads
    :target: https://pepy.tech/project/cosg
 .. |Monthly downloads| image:: https://static.pepy.tech/personalized-badge/cosg?period=month&units=international_system&left_color=black&right_color=orange&left_text=downloads/month
- :target: https://pepy.tech/project/cosg
+   :target: https://pepy.tech/project/cosg
 
 Accurate and fast cell marker gene identification with COSG
 =============================================================
 
 Overview
 ---------
+
 COSG is a cosine similarity-based method for more accurate and scalable marker gene identification.
 
-- COSG is a general method for cell marker gene identification across different data modalities, e.g., scRNA-seq, scATAC-seq and spatially resolved transcriptome data.
-- Marker genes or genomic regions identified by COSG are more indicative and with greater cell-type specificity.
-- COSG is ultrafast for large-scale datasets, and is capable of identifying marker genes for one million cells in less than two minutes.
+- COSG is a general method for cell marker gene identification across different data modalities, e.g., scRNA-seq, scATAC-seq, and spatially resolved transcriptome data.
 
-The method and benchmarking results are described in `Dai et al., (2022)`_. Additionally, the R version of COSG is available `here <https://github.com/genecell/COSGR>`_.
+- Marker genes or genomic regions identified by COSG are more indicative and with greater cell-type specificity.
+
+- COSG is ultrafast for large-scale datasets and is capable of identifying marker genes for one million cells in less than two minutes.
+
+The method and benchmarking results are described in `Dai et al., 2022`_.
+
+Additionally, the R version of COSG is available `here <https://github.com/genecell/COSGR>`_.
 
 Note: we have recently released our python toolkit, `PIASO <https://github.com/genecell/PIASO>`_, in which some methods were built upon COSG, please try out PIASO, thank you!
 
@@ -39,11 +44,15 @@ The `COSG tutorial <https://nbviewer.jupyter.org/github/genecell/COSG/blob/main/
 
 Installation
 ------------
-Stable version::
+Stable version:
+
+.. code-block:: bash
 
    pip install cosg
 
-Development version::
+Development version:
+
+.. code-block:: bash
 
    pip install git+https://github.com/genecell/COSG.git
 
@@ -113,6 +122,6 @@ Citation
 ---------
 If COSG is useful for your research, please consider citing `Dai et al., (2022)`_.
 
-.. _Dai et al., (2022): https://academic.oup.com/bib/advance-article-abstract/doi/10.1093/bib/bbab579/6511197?redirectedFrom=fulltext
+.. _Dai_2022: https://academic.oup.com/bib/advance-article-abstract/doi/10.1093/bib/bbab579/6511197?redirectedFrom=fulltext
 
 
