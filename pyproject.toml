@@ -38,19 +38,22 @@ classifiers = [
 ]
 
 dependencies = [
-    "anndata>=0.7.4",
+    "anndata>=0.8",
+    "scanpy>=1.6.0",
     "numpy>=1.17.0",
     "pandas>=0.21",
-    "scanpy>=1.6.0",
     "scikit-learn>=0.21.2",
-    "scipy>=1.4"
+    "scipy>=1.4",
+    "matplotlib>=3.5.2",
+    "networkx>=2.8.8",
+    "typing-extensions",
 ]
 
 # Project URLs
 [project.urls]
-Documentation = "https://cosg.readthedocs.io/en/latest/"
+Documentation = "https://genecell.github.io/COSG"
 Source = "https://github.com/genecell/COSG"
-Homepage = "https://github.com/genecell/COSG"
+Homepage = "https://genecell.github.io/COSG"
 
 [project.optional-dependencies]
 dev = [
