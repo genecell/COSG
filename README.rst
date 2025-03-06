@@ -25,7 +25,7 @@ COSG is a cosine similarity-based method for more accurate and scalable marker g
 
 - COSG is ultrafast for large-scale datasets and is capable of identifying marker genes for one million cells in less than two minutes.
 
-The method and benchmarking results are described in `Dai et al., 2022`_.
+The method and benchmarking results are described in `Dai et al. (2022)`_.
 
 Additionally, the R version of COSG is available `here <https://github.com/genecell/COSGR>`_.
 
@@ -120,8 +120,9 @@ For questions about the code and tutorial, please contact Min Dai, dai@broadinst
 
 Citation
 ---------
-If COSG is useful for your research, please consider citing `Dai et al., (2022)`_.
+If COSG is useful for your research, please consider citing `Dai et al. (2022)`_.
 
-.. _Dai_2022: https://academic.oup.com/bib/advance-article-abstract/doi/10.1093/bib/bbab579/6511197?redirectedFrom=fulltext
+.. _Dai et al. (2022): https://academic.oup.com/bib/advance-article-abstract/doi/10.1093/bib/bbab579/6511197?redirectedFrom=fulltext
+
 
 
