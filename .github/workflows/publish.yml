@@ -1,8 +1,10 @@
 name: Publish to PyPI
 
+
 on:
-  release:
-    types: [created]
+  push:
+    branches:
+      - main
 
 jobs:
   build-and-publish:
