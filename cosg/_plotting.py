@@ -444,7 +444,8 @@ def plotMarkerDendrogram(
     
     
     # Extract top N marker genes for all cell types at once
-    marker_genes_df = adata.uns[cosg_key]['COSG']['names'].iloc[:top_n_genes]  # Slice once for efficiency
+    # marker_genes_df = adata.uns[cosg_key]['COSG']['names'].iloc[:top_n_genes]  # Slice once for efficiency
+    marker_genes_df = pd.DataFrame(adata.uns[cosg_key]['names']).iloc[:top_n_genes] # Slice once for efficiency
     selected_genes = marker_genes_df.values.flatten()  # Flatten to get all genes as a 1D list
     selected_genes = pd.Index(selected_genes).dropna().unique()  # Remove NaNs & duplicates
 

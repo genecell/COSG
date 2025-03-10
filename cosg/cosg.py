@@ -53,6 +53,7 @@ def cosg(
     layer: Optional[str] = None,
     reference: str = 'rest',
     return_by_group : bool = True,
+    column_delimiter: str = "::",
     verbosity: int = 0,
     copy: bool = False
 ):
@@ -95,6 +96,8 @@ def cosg(
         If a group identifier, compare with respect to this group.
     return_by_group : bool, default True
         If True, the COSG scores are also summarized and stored separately by group in adata.uns[`key_added`]['COSG']. This will output another extra copy of the results. Defaults to True.
+    column_delimiter : str, default "::"
+        Delimiter to use when combining multi-index column names for `adata.write()` compatibility. Default is "::".
     verbosity : int, default 0
         Controls the verbosity of logging messages, defaults to 0. Higher values produce more detailed messages.
     copy: bool, default False
@@ -447,7 +450,18 @@ def cosg(
     
     #### also return a copy of the results showing the results by group
     if return_by_group:
-        adata.uns[key_added]['COSG']=rank_stats
+        # Need to swap levels first to ensure attribute comes first, then cell group
+        rank_stats_swapped = rank_stats.copy()
+        rank_stats_swapped.columns = rank_stats_swapped.columns.swaplevel()
+        
+        # Create a new DataFrame with flattened column names using the specified delimiter
+        # Format: attribute::cell_group
+        flattened_columns = [column_delimiter.join(map(str, col)) for col in rank_stats_swapped.columns]
+        cosg_results = rank_stats_swapped.copy()
+        cosg_results.columns = flattened_columns
+        
+        # Store with flattened column names for compatibility with adata.write
+        adata.uns[key_added]['COSG'] = cosg_results
     
     
     ## Refer to scanpy
@@ -476,17 +490,20 @@ def indexByGene(
     df: pd.DataFrame,
     gene_key: str = "names",
     score_key: str = "scores",
+    column_delimiter: str = "::",
     set_nan_to_zero: bool= False,
     convert_negative_one_to_zero: bool = True
 ):
     """
-    Reshapes a DataFrame with MultiIndex columns where gene names are under the specified key 
-    and scores are under the corresponding key. The resulting DataFrame will have gene names as the index 
-    and scores for each cell type in separate columns.
+    Reshapes a DataFrame with flattened column names (converted from MultiIndex columns) where 
+    gene names are under the specified key and scores are under the corresponding key.
+    The resulting DataFrame will have gene names as the index and scores for each cell group in separate columns.
 
     Note
     ----
-    This function is designed for reindexing COSG's output stored in `adata.uns['cosg']['COSG']`. 
+    This function is designed for reindexing COSG's output stored in `adata.uns['cosg']['COSG']`.
+    It works with the flattened column format where attribute and cell group are joined by a delimiter
+    in the format 'attribute{delimiter}cell_group'.
     It is recommended to set `n_genes_user=adata.n_vars` when calling the `cosg.cosg` function to ensure 
     that scores for all genes are returned.
     
@@ -498,6 +515,8 @@ def indexByGene(
         The key used for gene names in the first level of MultiIndex.
     score_key : str, optional, default="scores"
         The key used for scores in the first level of MultiIndex.
+    column_delimiter : str, optional, default="::"
+        Delimiter used to separate attribute and cell group in the column names.
     set_nan_to_zero : bool, optional, default=False
         If True, replaces all NaN values in the resulting DataFrame with 0.
         Set this parameter to True if `n_genes_user=adata.n_vars` is not set when calling the `cosg.cosg` function.
@@ -510,21 +529,14 @@ def indexByGene(
     pd.DataFrame
         Reshaped DataFrame with genes as index and scores per cell type.
         
-    
-    Raises
-    ------
-    TypeError
-        If the input df is not a pandas DataFrame.
-    ValueError
-        If the input DataFrame does not have MultiIndex columns with at least two levels,
-        or if the specified gene_key or score_key is not found in the first level of the columns.
-        
+
     Example
     -------
     >>> cosg_df = indexByGene(
     ...     adata.uns['cosg']['COSG'],
     ...     gene_key="names",
     ...     score_key="scores",
+    ...     column_delimiter="::",
     ...     set_nan_to_zero=True,
     ...     convert_negative_one_to_zero=True
     ... )
@@ -532,44 +544,118 @@ def indexByGene(
     >>> cosg_df.head()
     """
     
-    # Validate input type
+        # Validate input type
     if not isinstance(df, pd.DataFrame):
         raise TypeError("The input df must be a pandas DataFrame.")
-
-    # Validate that columns are a MultiIndex with at least two levels
-    if not isinstance(df.columns, pd.MultiIndex) or len(df.columns.levels) < 2:
-        raise ValueError("The input DataFrame must have MultiIndex columns with at least two levels.")
-
-    # Validate that gene_key and score_key are present in the first level of the MultiIndex
-    if gene_key not in df.columns.get_level_values(0):
-        raise ValueError(f"The gene_key '{gene_key}' is not present in the first level of the DataFrame columns.")
-    if score_key not in df.columns.get_level_values(0):
-        raise ValueError(f"The score_key '{score_key}' is not present in the first level of the DataFrame columns.")
     
-    # Extract unique cell types from the second level of the MultiIndex
-    cell_types = df.columns.get_level_values(1).unique()
-
-    # Get all unique gene names across cell types using the gene_key column
-    all_genes = pd.concat([df[(gene_key, ct)] for ct in cell_types]).unique()
+    # Extract cell groups from the column names while preserving original order
+    cell_groups = []
+    for col in df.columns:
+        parts = col.split(column_delimiter)
+        if len(parts) == 2 and parts[0] == gene_key:  # Only look at gene columns to maintain order
+            if parts[1] not in cell_groups:
+                cell_groups.append(parts[1])
     
+    # Gather all genes from all 'names' columns
+    all_genes = []
+    for cell_group in cell_groups:
+        gene_col = f"{gene_key}{column_delimiter}{cell_group}"
+        if gene_col in df.columns:
+            all_genes.extend(df[gene_col].tolist())
+    all_genes = pd.Series(all_genes).unique()
+    
+    # Create results DataFrame
     df_scores = pd.DataFrame(index=all_genes)
-
-    # Assign scores to the corresponding gene names
-    for ct in cell_types:
-        scores_series = df.set_index((gene_key, ct))[(score_key, ct)]
-        # Reindex the scores_series to align with all_genes
-        df_scores[ct] = scores_series.reindex(df_scores.index)
     
-
-    # Optionally replace NaN values with 0 if set_nan_to_zero is True
-    if set_nan_to_zero and df_scores.isnull().values.any():
-        df_scores.fillna(0, inplace=True)
+    # Fill in scores for each cell group
+    for cell_group in cell_groups:
+        gene_col = f"{gene_key}{column_delimiter}{cell_group}"
+        score_col = f"{score_key}{column_delimiter}{cell_group}"
         
+        if gene_col in df.columns and score_col in df.columns:
+            # Create a temporary gene-to-score mapping
+            gene_to_score = dict(zip(df[gene_col], df[score_col]))
+            # Populate the scores column
+            df_scores[cell_group] = df_scores.index.map(lambda x: gene_to_score.get(x, float('nan')))
+    
+    # Apply optional transformations
+    if set_nan_to_zero:
+        df_scores.fillna(0, inplace=True)
+    
     # Optionally replace -1.0 values with 0
     if convert_negative_one_to_zero:
         df_scores = df_scores.replace(-1.0, 0)
-
+    
     return df_scores
+    
+#     # Validate input type
+#     if not isinstance(df, pd.DataFrame):
+#         raise TypeError("The input df must be a pandas DataFrame.")
+
+#     # # Validate that columns are a MultiIndex with at least two levels
+#     # if not isinstance(df.columns, pd.MultiIndex) or len(df.columns.levels) < 2:
+#     #     raise ValueError("The input DataFrame must have MultiIndex columns with at least two levels.")
+        
+#     # Parse column names to extract attributes and cell groups
+#     column_parts = {col: col.split(column_delimiter, 1) for col in df.columns}
+    
+#     # Check if the column format is as expected
+#     if not all(len(parts) == 2 for parts in column_parts.values()):
+#         raise ValueError(f"Column names must follow the format 'attribute{column_delimiter}cell_group'")
+
+#     # Extract all unique attributes and cell groups
+#     attributes = set(parts[0] for parts in column_parts.values())
+#     cell_groups = sorted(set(parts[1] for parts in column_parts.values()))
+ 
+
+#     # Validate that gene_key and score_key are present in the first level of the MultiIndex
+#     if gene_key not in df.columns.get_level_values(0):
+#         raise ValueError(f"The gene_key '{gene_key}' is not present in the first level of the DataFrame columns.")
+#     if score_key not in df.columns.get_level_values(0):
+#         raise ValueError(f"The score_key '{score_key}' is not present in the first level of the DataFrame columns.")
+    
+#     # Extract unique cell types from the second level of the MultiIndex
+#     cell_types = df.columns.get_level_values(1).unique()
+
+#     # Get all unique gene names across cell types using the gene_key column
+#     all_genes = pd.concat([df[(gene_key, ct)] for ct in cell_types]).unique()
+    
+#     df_scores = pd.DataFrame(index=all_genes)
+
+#     # # Assign scores to the corresponding gene names
+#     # for ct in cell_types:
+#     #     scores_series = df.set_index((gene_key, ct))[(score_key, ct)]
+#     #     # Reindex the scores_series to align with all_genes
+#     #     df_scores[ct] = scores_series.reindex(df_scores.index)
+        
+        
+#     # For each cell group, extract scores and align with all genes
+#     for cell_group in cell_groups:
+#         # Find the column names for this cell group's gene names and scores
+#         gene_col = f"{gene_key}{column_delimiter}{cell_group}"
+#         score_col = f"{score_key}{column_delimiter}{cell_group}"
+        
+#         # Check if both columns exist
+#         if gene_col not in df.columns or score_col not in df.columns:
+#             continue
+        
+#         # Create a temporary Series mapping gene names to scores
+#         temp_df = df[[gene_col, score_col]].copy()
+#         temp_df.set_index(gene_col, inplace=True)
+        
+#         # Add scores to the result DataFrame, aligned with all_genes index
+#         df_scores[cell_group] = temp_df[score_col].reindex(df_scores.index)
+    
+
+#     # Optionally replace NaN values with 0 if set_nan_to_zero is True
+#     if set_nan_to_zero and df_scores.isnull().values.any():
+#         df_scores.fillna(0, inplace=True)
+        
+#     # Optionally replace -1.0 values with 0
+#     if convert_negative_one_to_zero:
+#         df_scores = df_scores.replace(-1.0, 0)
+
+#     return df_scores
 
 
 import numpy as np
