@@ -153,7 +153,7 @@ def plotMarkerDendrogram(
     colorbar_width: float = 0.01,
     layer: str = None,
     gene_size_scale: float = 300,
-    map_celltype_gene: dict = None,
+    map_cell_type_gene: dict = None,
     cell_type_selected: list = None,
     color_root_node: str = '#D6EFD5',
     color_internal_node: str = 'lightgray',
@@ -280,7 +280,7 @@ def plotMarkerDendrogram(
         If provided, use adata.layers[layer] to calculate expression; otherwise, use adata.X.
     gene_size_scale : float, optional, default=300
         Base size for marker gene nodes; final size = gene_size_scale * (expression_percentage / 100).
-    map_celltype_gene : dict, optional, default=None
+    map_cell_type_gene : dict, optional, default=None
         Custom mapping of cell types to marker genes. If provided, this will be used instead of the top marker genes.
         Should be a dictionary where keys are cell type names and values are lists of gene names.
         Only genes present in adata.var_names will be included. It's okay if some cell types are not in the dict.
@@ -531,7 +531,7 @@ def plotMarkerDendrogram(
                             G.add_edge(root, ct)
     
     # Check if a custom cell type to gene mapping is provided
-    if map_celltype_gene is not None:
+    if map_cell_type_gene is not None:
         # Get a set of valid genes (those in adata.var_names)
         valid_genes = set(adata.var_names)
         
@@ -541,7 +541,7 @@ def plotMarkerDendrogram(
         
         # Process each cell type in the mapping
         mapped_cell_types = []
-        for ct, genes in map_celltype_gene.items():
+        for ct, genes in map_cell_type_gene.items():
             if ct not in cell_types:
                 continue  # Skip cell types not in the data
             
@@ -557,9 +557,9 @@ def plotMarkerDendrogram(
         # Check if there's any overlap between cell_types and mapped cell types
         if len(mapped_cell_types) == 0:
             if cell_type_selected is not None:
-                raise ValueError(f"No overlap between cell types in map_celltype_gene {list(map_celltype_gene.keys())} and the selected cell types {cell_type_selected}")
+                raise ValueError(f"No overlap between cell types in map_cell_type_gene {list(map_cell_type_gene.keys())} and the selected cell types {cell_type_selected}")
             else:
-                raise ValueError(f"None of the cell types in map_celltype_gene {list(map_celltype_gene.keys())} are present in the data")
+                raise ValueError(f"None of the cell types in map_cell_type_gene {list(map_cell_type_gene.keys())} are present in the data")
         
         # Convert set to list for further processing
         selected_genes = list(all_selected_genes)
@@ -579,7 +579,7 @@ def plotMarkerDendrogram(
     # Attach marker gene nodes to each cell type leaf
     gene_nodes = {}
     
-    if map_celltype_gene is not None:
+    if map_cell_type_gene is not None:
         # Use the custom mapping
         for ct in cell_types:
             if ct not in G or ct not in selected_genes_dict or not selected_genes_dict[ct]:
