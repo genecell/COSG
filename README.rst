@@ -46,6 +46,7 @@ Release notes
 - Fixed the incompatibility with multiple index columns of ``adata.uns['cosg']['COSG']`` in ``adata.write`` function
 
 - Enhanced ``plotMarkerDendrogram`` function with several new capabilities:
+
   - Implemented support for customized cell type-gene pairs
   - Added color control for nodes and edges
   - Added cell type filtering functionality
