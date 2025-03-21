@@ -124,6 +124,9 @@ def _radial_dendrogram_layout(G, root, radius_step=1.5, start_angle=0, end_angle
 
 ### Plot marker specificity with cell type dendrogram information
 
+# Import matplotlib modules needed for curved edges
+import matplotlib.path as mpath
+import matplotlib.patches as mpatches
 
 def plotMarkerDendrogram(
     adata,
@@ -162,9 +165,6 @@ def plotMarkerDendrogram(
     show_figure: bool = True,
     save: str = None,
 ):
-    # Import matplotlib modules needed for curved edges
-    import matplotlib.path as mpath
-    import matplotlib.patches as mpatches
     """
     Visualizes a radial dendrogram of cell types with attached top marker genes.
     
