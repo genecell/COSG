@@ -4,5 +4,5 @@ Tutorials
 .. toctree::
    :maxdepth: 1
 
-   notebooks/20_COSG_tutorial.ipynb
+   notebooks/24_COSG_tutorial.ipynb
    notebooks/COSG-tutorial.ipynb
