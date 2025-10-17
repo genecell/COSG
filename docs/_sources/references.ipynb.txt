@@ -14,8 +14,16 @@
    "metadata": {},
    "source": [
     "<a id=\"cell1\"></a>\n",
-    "1. Dai, M., Pei, X., & Wang, X.-J. (2022). Accurate and fast cell marker gene identification with COSG. Briefings in Bioinformatics, 23(2). https://doi.org/10.1093/bib/bbab579"
+    "1. Wu, S., et al. (2024). Pyramidal neurons proportionately alter the identity and survival of specific cortical interneuron subtypes, bioRxiv. https://doi.org/10.1101/2024.07.20.604399"
    ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "3a63b69f-5bbe-4898-908b-4521964aa710",
+   "metadata": {},
+   "outputs": [],
+   "source": []
   }
  ],
  "metadata": {
