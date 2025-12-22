@@ -29,9 +29,9 @@ The method and benchmarking results are described in `Dai et al. (2022)`_.
 
 Additionally, the R version of COSG is available `here <https://github.com/genecell/COSGR>`_.
 
-Note I: we released our Python toolkit, `PIASO <https:piaso.org>`_, in which some methods were built upon COSG.
+Note I: we released our Python toolkit, `PIASO <https://piaso.org>`_, in which some methods were built upon COSG.
 
-Note II: we have also recently released `PIASOmarkerDB <https:piaso.org/piasomarkerdb>`_ for beta testing! PIASOmarkerDB also supports cell type inference based on your input gene list. The gene list could be the top marker genes identified by COSG in your cluster of interest, the differentially expressed genes in either snRNA-seq data or bulk RNA-seq, genes belonging to specific pathway or Gene Ontology term, or any gene set you are interested in!
+Note II: we have also recently released `PIASOmarkerDB <https://piaso.org/piasomarkerdb>`_ for beta testing! Besides cataloging comprehensive cell type-specific marker genes, PIASOmarkerDB also supports cell type inference based on your input gene list. The gene list could be the top marker genes identified by COSG in your cluster of interest, the differentially expressed genes in either snRNA-seq data or bulk RNA-seq, genes belonging to specific pathway or Gene Ontology term, or any gene set you are interested in!
 
 Documentation
 --------------
@@ -97,7 +97,7 @@ Run COSG:
 .. code-block:: python
    
    import cosg
-   n_gene=30
+   n_genes=30
    groupby='CellTypes'
    cosg.cosg(
       adata,
@@ -106,7 +106,7 @@ Run COSG:
       mu=100,
       expressed_pct=0.1,
       remove_lowly_expressed=True,
-      n_genes_user=100,
+      n_genes_user=n_genes,
       groupby=groupby
    )
 
@@ -114,21 +114,18 @@ Draw the dot plot:
 
 .. code-block:: python
    
-   sc.tl.dendrogram(adata, groupby=groupby, use_rep='X_pca') ## Change use_rep to the cell embeddings key you'd like to use
-   df_tmp=pd.DataFrame(adata.uns['cosg']['names'][:3,]).T
-   df_tmp=df_tmp.reindex(adata.uns['dendrogram_'+groupby]['categories_ordered'])
-   marker_genes_list={idx: list(row.values) for idx, row in df_tmp.iterrows()}
-   marker_genes_list = {k: v for k, v in marker_genes_list.items() if not any(isinstance(x, float) for x in v)}
-   
-   sc.pl.dotplot(
-      adata,
-      marker_genes_list,
-      groupby=groupby,              
-      dendrogram=True,
-      swap_axes=False,
-      standard_scale='var',
-      cmap='Spectral_r'
-    )
+   cosg.plotMarkerDotplot(
+       adata,
+       groupby=groupby,
+       top_n_genes=3,
+       key_cosg='cosg',
+       use_rep='X_pca', ## Change use_rep to the cell embeddings key you'd like to use
+       swap_axes=False,
+       standard_scale='var',
+       cmap='Spectral_r',
+       # save='test.pdf'
+   )
+
 
 
 Output the marker list as pandas dataframe:
@@ -156,6 +153,3 @@ Citation
 If COSG is useful for your research, please consider citing `Dai et al. (2022)`_.
 
 .. _Dai et al. (2022): https://academic.oup.com/bib/advance-article-abstract/doi/10.1093/bib/bbab579/6511197?redirectedFrom=fulltext
-
-
-
