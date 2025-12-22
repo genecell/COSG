@@ -29,7 +29,9 @@ The method and benchmarking results are described in `Dai et al. (2022)`_.
 
 Additionally, the R version of COSG is available `here <https://github.com/genecell/COSGR>`_.
 
-Note: we have recently released our python toolkit, `PIASO <https://github.com/genecell/PIASO>`_, in which some methods were built upon COSG, please try out PIASO, thank you!
+Note I: we released our Python toolkit, `PIASO <https:piaso.org>`_, in which some methods were built upon COSG.
+
+Note II: we have also recently released `PIASOmarkerDB <https:piaso.org/piasomarkerdb>`_ for beta testing! PIASOmarkerDB also supports cell type inference based on your input gene list. The gene list could be the top marker genes identified by COSG in your cluster of interest, the differentially expressed genes in either snRNA-seq data or bulk RNA-seq, genes belonging to specific pathway or Gene Ontology term, or any gene set you are interested in!
 
 Documentation
 --------------
