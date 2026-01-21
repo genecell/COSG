@@ -33,6 +33,8 @@ Note I: we released our Python toolkit, `PIASO <https://piaso.org>`_, in which s
 
 Note II: we have also recently released `PIASOmarkerDB <https://piaso.org/piasomarkerdb>`_ for beta testing.
 
+Note III: COSG is also available for online analysis via `Galaxy platform <https://usegalaxy.eu/root?tool_id=cosg>`_.
+
 Documentation
 --------------
 
