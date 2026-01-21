@@ -44,6 +44,28 @@ Documentation
 `COSG documentation <https://genecell.github.io/COSG/>`_.
 
 
+Installation
+------------
+Stable version (PyPI):
+
+.. code-block:: bash
+
+   pip install cosg
+
+Stable version (bioconda):
+
+.. code-block:: bash
+
+   conda install -c conda-forge -c bioconda cosg
+
+Development version:
+
+.. code-block:: bash
+
+   pip install git+https://github.com/genecell/COSG.git
+
+
+
 Release notes
 -------------
 
@@ -79,20 +101,6 @@ Release notes
 
 
 - First release in PyPI. 
-
-Installation
-------------
-Stable version:
-
-.. code-block:: bash
-
-   pip install cosg
-
-Development version:
-
-.. code-block:: bash
-
-   pip install git+https://github.com/genecell/COSG.git
 
 
 Example
