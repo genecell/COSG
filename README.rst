@@ -1,9 +1,12 @@
-|Stars| |PyPI| |Docs| |Total downloads| |Monthly downloads|
+|Stars| |PyPI| |Bioconda| |Docs| |Total downloads| |Monthly downloads|
 
 .. |Stars| image:: https://img.shields.io/github/stars/genecell/COSG?logo=GitHub&color=yellow
    :target: https://github.com/genecell/COSG/stargazers
 .. |PyPI| image:: https://img.shields.io/pypi/v/cosg?logo=PyPI
    :target: https://pypi.org/project/cosg
+.. |Bioconda| image:: https://img.shields.io/badge/install%20with-bioconda-brightgreen.svg?style=flat
+   :target: http://bioconda.github.io/recipes/cosg/README.html
+   :alt: install with bioconda
 .. |Docs| image:: https://readthedocs.org/projects/cosg/badge/?version=latest
    :target: https://cosg.readthedocs.io
 .. |Total downloads| image:: https://static.pepy.tech/personalized-badge/cosg?period=total&units=international_system&left_color=black&right_color=orange&left_text=downloads
