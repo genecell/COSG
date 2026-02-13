@@ -32,7 +32,6 @@ def _select_top_n(scores, n_top):
     global_indices = reference_indices[partition][partial_indices]
     return global_indices
 
-import numpy as np
 from scipy.sparse import csr_matrix
 from sklearn.metrics.pairwise import cosine_similarity
 
@@ -44,6 +43,7 @@ def cosg(
     mu: float = 1,
     remove_lowly_expressed: bool= False,
     expressed_pct: Optional[float] = 0.1,
+    expressed_min_num_cells_in_target_group: int = 3, 
     n_genes_user: int = 50,
     batch_key: str = None,
     batch_cell_number_threshold: int = 3,
@@ -74,6 +74,13 @@ def cosg(
         If True, genes that express a percentage of target cells smaller than a specific value (`expressed_pct`) are not considered as marker genes for the target cells. The default value is False.
     expressed_pct : float, optional, default 0.1
         When `remove_lowly_expressed` is set to True, genes that express a percentage of target cells smaller than a specific value (`expressed_pct`) are not considered as marker genes for the target cells. The default value for `expressed_pct` is 0.1 (10%).
+    expressed_min_num_cells_in_target_group : int, default 3
+        When `remove_lowly_expressed` is set to True, this sets the minimum absolute 
+        number of cells that must express a gene for it to be considered as a marker.
+        The actual threshold used is the maximum of (`n_cells * expressed_pct`) and 
+        this value. This prevents overly permissive thresholds in small clusters.
+        For example, with a cluster of 10 cells and `expressed_pct=0.1`, the threshold
+        would be max(1, 3) = 3 cells instead of just 1 cell.
     n_genes_user : int, default 50
         The number of genes that appear in the returned tables. The default value is 50.
     batch_key : str, optional, default None
@@ -138,6 +145,54 @@ def cosg(
     ### Validate the input parameter mu
     if mu < 0:
         raise ValueError("Parameter mu must be non-negative.")
+        
+        
+    # Validate groupby column exists
+    if groupby not in adata.obs.columns:
+        raise ValueError(
+            f"Column '{groupby}' not found in adata.obs. "
+            f"Available columns: {list(adata.obs.columns)}"
+        )
+        
+    # Validate groups parameter
+    if groups != 'all':
+        if isinstance(groups, (str, int)):
+            raise ValueError("Specify a sequence of groups, not a single value.")
+        
+        available_groups = set(adata.obs[groupby].unique())
+        requested_groups = set(groups)
+        invalid_groups = requested_groups - available_groups
+        
+        if invalid_groups:
+            raise ValueError(
+                f"Groups {invalid_groups} not found in adata.obs['{groupby}']. "
+                f"Available groups: {available_groups}"
+            )
+            
+        if batch_key is not None:
+            raise NotImplementedError(
+                "Using `batch_key` with a subset of `groups` is not currently supported. "
+                "Please use `groups='all'` when using batch correction, or set `batch_key=None`."
+            )
+            
+    # Validate n_genes_user
+    if n_genes_user < 1:
+        raise ValueError("n_genes_user must be at least 1.")
+    
+    # Validate expressed_pct
+    if expressed_pct is not None and not (0 <= expressed_pct <= 1):
+        raise ValueError("expressed_pct must be between 0 and 1.")
+        
+    # Validate expressed_min_num_cells_in_target_group
+    if expressed_min_num_cells_in_target_group < 1:
+        raise ValueError("expressed_min_num_cells_in_target_group must be at least 1.")
+    
+    # Validate layer exists if specified
+    if layer is not None and layer not in adata.layers:
+        raise ValueError(
+            f"Layer '{layer}' not found in adata.layers. "
+            f"Available layers: {list(adata.layers.keys())}"
+        )
     
     adata = adata.copy() if copy else adata
         
@@ -148,7 +203,8 @@ def cosg(
     else:
         if use_raw and adata.raw is not None:
              cellxgene = adata.raw.X
-        cellxgene = adata.X
+        else:
+            cellxgene = adata.X
     
     
     ### Refer to scanpy's framework
@@ -165,6 +221,9 @@ def cosg(
         use_raw=use_raw,
         layer=layer,
         mu=mu,
+        remove_lowly_expressed=remove_lowly_expressed,  
+        expressed_pct=expressed_pct, 
+        expressed_min_num_cells_in_target_group=expressed_min_num_cells_in_target_group, 
     )
     
     ### Refer to: https://github.com/theislab/scanpy/blob/5533b644e796379fd146bf8e659fd49f92f718cd/scanpy/tools/_rank_genes_groups.py#L543
@@ -223,6 +282,14 @@ def cosg(
     
     ### Provide a batch_key option
     if batch_key is not None:
+        
+        # Validate batch_key exists
+        if batch_key not in adata.obs.columns:
+            raise ValueError(
+                f"batch_key '{batch_key}' not found in adata.obs. "
+                f"Available columns: {list(adata.obs.columns)}"
+            )
+        
         
         batch_info = adata.obs[batch_key].values  
         unique_batches = np.unique(batch_info)
@@ -351,6 +418,7 @@ def cosg(
     rank_stats=None
     
     ### Whether to calculate logfoldchanges, because this is required in scanpy 1.8
+    anndata_obj = None  # Initialize before conditional creation
     if calculate_logfoldchanges:
         ### Calculate basic stats
         ### Refer to Scanpy
@@ -386,46 +454,86 @@ def cosg(
         get_nonzeros = lambda X: np.count_nonzero(X, axis=0)
     
     
-    order_i=0
-    for group_i in groups_order:    
-        idx_i=group_info==group_i 
+    # Pre-allocate result containers BEFORE the loop
+    results_names = {}
+    results_scores = {}
+    results_logfoldchanges = {} if calculate_logfoldchanges else None
+    
+    # ### Convert to dense matrix, as the genexlambda is likely not sparse
+    # if sparse.issparse(genexlambda):
+    #     genexlambda_dense = genexlambda.toarray()
+    # else:
+    #     genexlambda_dense = genexlambda
+    
+    ### Convert to dense matrix, as the genexlambda is likely not sparse
+    if sparse.issparse(genexlambda):
+        genexlambda = genexlambda.toarray()  # Reassign to same variable
 
+        
+    # order_i=0
+    # for group_i in groups_order:
+    for order_i, group_i in enumerate(groups_order):
+        idx_i=group_info==group_i 
         ### Convert to numpy array
         idx_i=idx_i.values
 
         ## Compare the most ideal case to the worst case
-        if sparse.issparse(cellxgene):
-            scores=genexlambda[:,order_i].toarray()[:,0] ###Changed .A to .toarray() for future support
-        else:
-            scores=genexlambda[:,order_i]
-
+        # if sparse.issparse(cellxgene):
+        #     scores=genexlambda[:,order_i].toarray()[:,0] ###Changed .A to .toarray() for future support
+        # else:
+        #     scores=genexlambda[:,order_i]
         
-        ### Mask these genes expressed in less than 3 cells in the cluster of interest
+        
+        # scores = genexlambda[:, order_i]
+        # ### Mask these genes expressed in less than 3 cells in the cluster of interest
+        # if remove_lowly_expressed:
+        #     n_cells_expressed=get_nonzeros(cellxgene[idx_i])
+        #     n_cells_i=np.sum(idx_i)
+        #     scores[n_cells_expressed<n_cells_i*expressed_pct]= -1
+            
         if remove_lowly_expressed:
-            n_cells_expressed=get_nonzeros(cellxgene[idx_i])
-            n_cells_i=np.sum(idx_i)
-            scores[n_cells_expressed<n_cells_i*expressed_pct]= -1
+            scores = genexlambda[:, order_i].copy()  # Copy because we modify
+            n_cells_expressed = get_nonzeros(cellxgene[idx_i])
+            n_cells_i = np.sum(idx_i)
+            
+            
+            # Warn if cluster is smaller than minimum threshold
+            if n_cells_i < expressed_min_num_cells_in_target_group:
+                if verbosity > 0:
+                    print(
+                        f"Warning: Group '{group_i}' has only {n_cells_i} cells, which is fewer than "
+                        f"expressed_min_num_cells_in_target_group={expressed_min_num_cells_in_target_group}. "
+                        f"All genes will be filtered out for this group."
+                    )
+            
+            # Use the maximum of percentage-based and absolute minimum threshold
+            threshold = max(
+                n_cells_i * expressed_pct, 
+                expressed_min_num_cells_in_target_group
+            )
+            scores[n_cells_expressed < threshold] = -1
+        else:
+            scores = genexlambda[:, order_i]  # View is fine, no modification
+
 
         global_indices = _select_top_n(scores, n_genes_user)
 
+                        
+        # # Initialize the DataFrame if rank_stats is None
         # if rank_stats is None:
-        #     idx = pd.MultiIndex.from_tuples([(group_i,'names')])
-        #     rank_stats = pd.DataFrame(columns=idx)
-        # rank_stats[group_i, 'names'] = adata.var_names[global_indices]
-        # rank_stats[group_i, 'scores'] = scores[global_indices]
-            
-            
-        # Initialize the DataFrame if rank_stats is None
-        if rank_stats is None:
-            rank_stats = pd.DataFrame()
+        #     rank_stats = pd.DataFrame()
 
         # Prepare data for new columns
-        columns_data = {
-            (group_i, 'names'): adata.var_names.values[global_indices],
-            (group_i, 'scores'): scores[global_indices]
-        }
+        # columns_data = {
+        #     (group_i, 'names'): adata.var_names.values[global_indices],
+        #     (group_i, 'scores'): scores[global_indices]
+        # }
         
-        if calculate_logfoldchanges:
+        # Store results in dictionaries instead of concatenating DataFrames
+        results_names[group_i] = adata.var_names.values[global_indices]
+        results_scores[group_i] = scores[global_indices]
+        
+        if calculate_logfoldchanges and anndata_obj is not None:
             group_index = np.where(anndata_obj.groups_order == group_i)[0][0]
             if anndata_obj.means is not None:
                 mean_group = anndata_obj.means[group_index]
@@ -437,16 +545,27 @@ def cosg(
                 foldchanges = (anndata_obj.expm1_func(mean_group) + 1e-9) / (
                     anndata_obj.expm1_func(mean_rest) + 1e-9
                 )  # Avoid division by zero
-                columns_data[(group_i, 'logfoldchanges')] = np.log2(foldchanges[global_indices])
+                # columns_data[(group_i, 'logfoldchanges')] = np.log2(foldchanges[global_indices])
+                results_logfoldchanges[group_i] = np.log2(foldchanges[global_indices])
 
 
-        # Create a new DataFrame for the current group
-        new_data = pd.DataFrame(columns_data)
+#         # Create a new DataFrame for the current group
+#         new_data = pd.DataFrame(columns_data)
 
-        # Concatenate with rank_stats
-        rank_stats = pd.concat([rank_stats, new_data], axis=1)
+#         # Concatenate with rank_stats
+#         rank_stats = pd.concat([rank_stats, new_data], axis=1)
     
-        order_i=order_i+1
+        # order_i = order_i + 1
+    
+    # Build DataFrame once after the loop
+    columns_data = {}
+    for group_i in groups_order:
+        columns_data[(group_i, 'names')] = results_names[group_i]
+        columns_data[(group_i, 'scores')] = results_scores[group_i]
+        if calculate_logfoldchanges and group_i in results_logfoldchanges:
+            columns_data[(group_i, 'logfoldchanges')] = results_logfoldchanges[group_i]
+    rank_stats = pd.DataFrame(columns_data)
+    
     
     #### also return a copy of the results showing the results by group
     if return_by_group:
@@ -484,7 +603,6 @@ def cosg(
     return adata if copy else None
 
 
-import pandas as pd
 
 def indexByGene(
     df: pd.DataFrame,
@@ -552,6 +670,12 @@ def indexByGene(
     cell_groups = []
     for col in df.columns:
         parts = col.split(column_delimiter)
+        if len(parts) > 2:
+            raise ValueError(
+                f"Column name '{col}' contains multiple instances of the delimiter "
+                f"'{column_delimiter}'. This may indicate that gene names or group names "
+                f"contain the delimiter. Please use a different column_delimiter."
+            )
         if len(parts) == 2 and parts[0] == gene_key:  # Only look at gene columns to maintain order
             if parts[1] not in cell_groups:
                 cell_groups.append(parts[1])
@@ -587,79 +711,9 @@ def indexByGene(
         df_scores = df_scores.replace(-1.0, 0)
     
     return df_scores
-    
-#     # Validate input type
-#     if not isinstance(df, pd.DataFrame):
-#         raise TypeError("The input df must be a pandas DataFrame.")
-
-#     # # Validate that columns are a MultiIndex with at least two levels
-#     # if not isinstance(df.columns, pd.MultiIndex) or len(df.columns.levels) < 2:
-#     #     raise ValueError("The input DataFrame must have MultiIndex columns with at least two levels.")
-        
-#     # Parse column names to extract attributes and cell groups
-#     column_parts = {col: col.split(column_delimiter, 1) for col in df.columns}
-    
-#     # Check if the column format is as expected
-#     if not all(len(parts) == 2 for parts in column_parts.values()):
-#         raise ValueError(f"Column names must follow the format 'attribute{column_delimiter}cell_group'")
-
-#     # Extract all unique attributes and cell groups
-#     attributes = set(parts[0] for parts in column_parts.values())
-#     cell_groups = sorted(set(parts[1] for parts in column_parts.values()))
- 
-
-#     # Validate that gene_key and score_key are present in the first level of the MultiIndex
-#     if gene_key not in df.columns.get_level_values(0):
-#         raise ValueError(f"The gene_key '{gene_key}' is not present in the first level of the DataFrame columns.")
-#     if score_key not in df.columns.get_level_values(0):
-#         raise ValueError(f"The score_key '{score_key}' is not present in the first level of the DataFrame columns.")
-    
-#     # Extract unique cell types from the second level of the MultiIndex
-#     cell_types = df.columns.get_level_values(1).unique()
-
-#     # Get all unique gene names across cell types using the gene_key column
-#     all_genes = pd.concat([df[(gene_key, ct)] for ct in cell_types]).unique()
-    
-#     df_scores = pd.DataFrame(index=all_genes)
-
-#     # # Assign scores to the corresponding gene names
-#     # for ct in cell_types:
-#     #     scores_series = df.set_index((gene_key, ct))[(score_key, ct)]
-#     #     # Reindex the scores_series to align with all_genes
-#     #     df_scores[ct] = scores_series.reindex(df_scores.index)
-        
-        
-#     # For each cell group, extract scores and align with all genes
-#     for cell_group in cell_groups:
-#         # Find the column names for this cell group's gene names and scores
-#         gene_col = f"{gene_key}{column_delimiter}{cell_group}"
-#         score_col = f"{score_key}{column_delimiter}{cell_group}"
-        
-#         # Check if both columns exist
-#         if gene_col not in df.columns or score_col not in df.columns:
-#             continue
-        
-#         # Create a temporary Series mapping gene names to scores
-#         temp_df = df[[gene_col, score_col]].copy()
-#         temp_df.set_index(gene_col, inplace=True)
-        
-#         # Add scores to the result DataFrame, aligned with all_genes index
-#         df_scores[cell_group] = temp_df[score_col].reindex(df_scores.index)
-    
-
-#     # Optionally replace NaN values with 0 if set_nan_to_zero is True
-#     if set_nan_to_zero and df_scores.isnull().values.any():
-#         df_scores.fillna(0, inplace=True)
-        
-#     # Optionally replace -1.0 values with 0
-#     if convert_negative_one_to_zero:
-#         df_scores = df_scores.replace(-1.0, 0)
-
-#     return df_scores
 
 
-import numpy as np
-import pandas as pd
+
 
 def iqrLogNormalize(
     df: pd.DataFrame,
@@ -738,8 +792,6 @@ def iqrLogNormalize(
 ###
 
 
-### Import from Scanpy
-from scipy.sparse import issparse
 
 ### Import from Scanpy
 def select_groups(adata, groups_order_subset='all', key='groups'):
@@ -774,13 +826,13 @@ def select_groups(adata, groups_order_subset='all', key='groups'):
                 )
             )[0]
         if len(groups_ids) == 0:
-            logg.debug(
-                f'{np.array(groups_order_subset)} invalid! specify valid '
-                f'groups_order (or indices) from {adata.obs[key].cat.categories}',
+            raise ValueError(
+                f'{np.array(groups_order_subset)} invalid! Specify valid '
+                f'groups_order (or indices) from {adata.obs[key].cat.categories}'
             )
-            from sys import exit
+#             from sys import exit
 
-            exit(0)
+#             exit(0)
         groups_masks = groups_masks[groups_ids]
         groups_order_subset = adata.obs[key].cat.categories[groups_ids].values
     else:
@@ -789,8 +841,6 @@ def select_groups(adata, groups_order_subset='all', key='groups'):
 
 
 ### Import from Scanpy   
-import numpy as np
-from scipy import sparse
 import numba
 
 
@@ -940,7 +990,7 @@ class _RankGenes:
             X = adata_comp.X
 
         # for correct getnnz calculation
-        if issparse(X):
+        if sparse.issparse(X):
             X.eliminate_zeros()
 
         self.X = X
@@ -987,7 +1037,7 @@ class _RankGenes:
             # deleting the next line causes a memory leak for some reason
             del X_rest
 
-        if issparse(self.X):
+        if sparse.issparse(self.X):
             get_nonzeros = lambda X: X.getnnz(axis=0)
         else:
             get_nonzeros = lambda X: np.count_nonzero(X, axis=0)
