@@ -465,9 +465,9 @@ def cosg(
     # else:
     #     genexlambda_dense = genexlambda
     
-    ### Convert to dense matrix, as the genexlambda is likely not sparse
-    if sparse.issparse(genexlambda):
-        genexlambda = genexlambda.toarray()  # Reassign to same variable
+    #### Convert to dense matrix, as the genexlambda is likely not sparse
+    # if sparse.issparse(genexlambda):
+        # genexlambda = genexlambda.toarray()  # Reassign to same variable
 
         
     # order_i=0
@@ -476,6 +476,14 @@ def cosg(
         idx_i=group_info==group_i 
         ### Convert to numpy array
         idx_i=idx_i.values
+        
+        # REVERT to original column-by-column extraction
+        if sparse.issparse(genexlambda):
+            scores = genexlambda[:, order_i].toarray()[:, 0]
+        else:
+            # scores = genexlambda[:, order_i].copy()  # Copy only if modifying
+            scores = genexlambda[:, order_i]  # No copy, because we only use each column once, genexlambda is not used after the loop
+
 
         ## Compare the most ideal case to the worst case
         # if sparse.issparse(cellxgene):
@@ -492,7 +500,7 @@ def cosg(
         #     scores[n_cells_expressed<n_cells_i*expressed_pct]= -1
             
         if remove_lowly_expressed:
-            scores = genexlambda[:, order_i].copy()  # Copy because we modify
+            # scores = genexlambda[:, order_i].copy()  # Copy because we modify
             n_cells_expressed = get_nonzeros(cellxgene[idx_i])
             n_cells_i = np.sum(idx_i)
             
@@ -512,8 +520,8 @@ def cosg(
                 expressed_min_num_cells_in_target_group
             )
             scores[n_cells_expressed < threshold] = -1
-        else:
-            scores = genexlambda[:, order_i]  # View is fine, no modification
+        # else:
+        #     scores = genexlambda[:, order_i]  # View is fine, no modification
 
 
         global_indices = _select_top_n(scores, n_genes_user)
