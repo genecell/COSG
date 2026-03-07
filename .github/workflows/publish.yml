@@ -17,15 +17,13 @@ jobs:
         with:
           python-version: "3.9"
 
-      - name: Install Hatch
-        run: pip install hatch
+      - name: Install build tools
+        run: pip install build twine
 
       - name: Build package
-        run: hatch build
+        run: python -m build
 
       - name: Publish to PyPI
         env:
           TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
-        run: |
-          pip install twine
-          twine upload dist/*
+        run: twine upload dist/*
