@@ -1,3 +1,21 @@
-**/.DS_Store
-**/.ipynb_checkpoints/
-**/__pycache__/
+# Python build / cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+build/
+dist/
+
+# Test caches
+.pytest_cache/
+.coverage
+htmlcov/
+
+# IDE / editor
+.idea/
+.vscode/
+*.swp
+*~
+
+# Notebook checkpoints
+.ipynb_checkpoints/

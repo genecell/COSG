@@ -1,5 +1,4 @@
 from anndata import AnnData
-import scanpy as sc
 import numpy as np
 import pandas as pd
 from scipy import sparse
@@ -36,14 +35,166 @@ from scipy.sparse import csr_matrix
 from sklearn.metrics.pairwise import cosine_similarity
 
 
+_CYTOME_DEFAULT = object()   # sentinel for cytome-only kwargs in cosg()
+
+
+def _is_anndata(obj):
+    """True if ``obj`` is an AnnData (lazy import; AnnData may not be
+    installed in some minimal cytome-only environments)."""
+    try:
+        import anndata
+    except ImportError:
+        return False
+    return isinstance(obj, anndata.AnnData)
+
+
+def _is_cytome_input(obj):
+    """True if ``obj`` looks like a cytome input (path or open Dataset).
+
+    Defers to ``cosg._cytome_streaming._is_cytome_dataset`` for the
+    Dataset check, plus accepts ``str`` and ``pathlib.Path`` for paths.
+    """
+    import os
+    from pathlib import Path
+    if isinstance(obj, (str, Path)):
+        return True
+    try:
+        from ._cytome_streaming import _is_cytome_dataset
+    except ImportError:
+        return False
+    return _is_cytome_dataset(obj)
+
+
+# AnnData-only kwargs the polymorphic ``cosg()`` recognises. If any of
+# these is set to a NON-default value while the input is a cytome,
+# the dispatcher raises TypeError naming the kwarg.
+#
+# Round 9 (2026-05-23): ``layer`` removed from this list. It's now a
+# SHARED kwarg with the cytome side — same name on both, but means
+# "adata.layers key" on AnnData and "cytome layer name" on cytome.
+# Round 30 (2026-07-31): ``batch_key`` and ``batch_cell_number_threshold`` moved
+# out of this list — the cytome streaming path implements them now (per-batch
+# cosine with that batch's own norms, averaged over batches meeting the cell
+# threshold), so they are SHARED kwargs like ``layer``.
+_ANNDATA_ONLY_KWARGS = (
+    "groups", "key_added",
+    "calculate_logfoldchanges", "use_raw", "reference",
+    "return_by_group", "column_delimiter", "copy", "gpu_chunk_size",
+    "cpu_chunk_size",
+)
+
+# Cytome-only kwargs the polymorphic ``cosg()`` recognises. If any of
+# these is non-sentinel while the input is an AnnData, dispatcher raises.
+#
+# Round 9: ``cytome_layer`` removed — replaced by shared ``layer``.
+_CYTOME_ONLY_KWARGS = (
+    "modality", "cell_mask", "batch_size", "feature_batching",
+    "min_total_count", "output_format", "compute_on_fly",
+    "use_cached_stats", "iqr_normalize", "q_upper", "q_lower",
+)
+
+
+def _dispatch_to_cytome(
+    cytome_input,
+    *,
+    groupby, n_genes_user, mu,
+    remove_lowly_expressed, expressed_pct,
+    expressed_min_num_cells_in_target_group,
+    device, verbosity,
+    batch_key, batch_cell_number_threshold,   # Round 30: shared with the cytome path
+    layer,                              # Round 9: shared kwarg, forward as layer=
+    _anndata_only_values,
+    # cytome-only kwargs (each may be _CYTOME_DEFAULT):
+    modality, cell_mask, batch_size, feature_batching, min_total_count,
+    output_format, compute_on_fly, use_cached_stats,
+    iqr_normalize, q_upper, q_lower,
+):
+    """Internal: route from ``cosg.cosg(cytome_input, ...)`` to
+    ``run_cosg_cytome``.
+
+    Strict kwarg discipline:
+
+    * Rejects AnnData-only kwargs (key_added, copy, use_raw, batch_key,
+      calculate_logfoldchanges, gpu/cpu_chunk_size, groups, reference,
+      return_by_group, column_delimiter, batch_cell_number_threshold)
+      with TypeError naming the offender.
+    * Forwards cytome-only kwargs only when they were explicitly set
+      (so cytome defaults stay authoritative).
+    * Maps AnnData-style ``verbosity: int`` → cytome-style
+      ``verbose: bool`` (`verbosity > 0`).
+    * ``layer`` is shared between AnnData and cytome paths: forwarded
+      only when the user set it explicitly (i.e. not the AnnData
+      default of None) so the cytome path's own default ('auto')
+      wins when omitted.
+    """
+    from ._cytome_streaming import run_cosg_cytome
+
+    # Reject AnnData-only kwargs set to non-default values.
+    _anndata_defaults = {
+        "groups": "all", "key_added": None,
+        "calculate_logfoldchanges": False, "use_raw": False,
+        "reference": "rest", "return_by_group": True,
+        "column_delimiter": "::", "copy": False, "gpu_chunk_size": None,
+        "cpu_chunk_size": None,
+    }
+    _bad_anndata_kwargs = [
+        k for k, v in _anndata_only_values.items()
+        if v != _anndata_defaults[k]
+    ]
+    if _bad_anndata_kwargs:
+        bad = ", ".join(sorted(_bad_anndata_kwargs))
+        raise TypeError(
+            f"cosg.cosg(cytome_input, ...) does not accept AnnData-only "
+            f"kwarg(s): {bad}. Drop the kwarg(s), or pass an AnnData as "
+            f"the first argument instead."
+        )
+
+    # Build the forward kwargs — only set those the user explicitly chose.
+    _fwd = dict(
+        groupby=groupby,
+        n_genes_user=n_genes_user,
+        mu=mu,
+        remove_lowly_expressed=remove_lowly_expressed,
+        expressed_pct=expressed_pct,
+        expressed_min_num_cells_in_target_group=
+            expressed_min_num_cells_in_target_group,
+        device=device,
+        verbose=(verbosity > 0),
+    )
+    # Shared ``layer`` kwarg: forward only when the user set it (i.e.
+    # not the AnnData default of None) so the cytome path's own default
+    # of 'auto' wins when omitted.
+    if layer is not None:
+        _fwd["layer"] = layer
+    # Shared batch kwargs (Round 30): forward only when set, so the cytome
+    # defaults stay authoritative.
+    if batch_key is not None:
+        _fwd["batch_key"] = batch_key
+        _fwd["batch_cell_number_threshold"] = batch_cell_number_threshold
+    for _name, _val in (
+        ("modality", modality), ("cell_mask", cell_mask),
+        ("batch_size", batch_size), ("feature_batching", feature_batching),
+        ("min_total_count", min_total_count),
+        ("output_format", output_format),
+        ("compute_on_fly", compute_on_fly),
+        ("use_cached_stats", use_cached_stats),
+        ("iqr_normalize", iqr_normalize),
+        ("q_upper", q_upper), ("q_lower", q_lower),
+    ):
+        if _val is not _CYTOME_DEFAULT:
+            _fwd[_name] = _val
+
+    return run_cosg_cytome(cytome_input, **_fwd)
+
+
 def cosg(
     adata,
     groupby: str = 'CellTypes',
     groups: Union[Literal['all'], Iterable[str]] = 'all',
     mu: float = 1,
-    remove_lowly_expressed: bool= False,
+    remove_lowly_expressed: bool = True,
     expressed_pct: Optional[float] = 0.1,
-    expressed_min_num_cells_in_target_group: int = 3, 
+    expressed_min_num_cells_in_target_group: int = 3,
     n_genes_user: int = 50,
     batch_key: str = None,
     batch_cell_number_threshold: int = 3,
@@ -55,7 +206,26 @@ def cosg(
     return_by_group : bool = True,
     column_delimiter: str = "::",
     verbosity: int = 0,
-    copy: bool = False
+    copy: bool = False,
+    device: str = 'cpu',
+    gpu_chunk_size: Optional[int] = None,
+    cpu_chunk_size: Optional[int] = None,
+    # ---- Cytome-only kwargs (Round 8, 2026-05-23) ----
+    # These are recognised when ``adata`` is a cytome path / Dataset.
+    # Passing any of them with a non-sentinel value while the input is
+    # an AnnData raises ``TypeError``.
+    # Round 9 (2026-05-23): ``cytome_layer`` removed — use shared ``layer``.
+    modality=_CYTOME_DEFAULT,
+    cell_mask=_CYTOME_DEFAULT,
+    batch_size=_CYTOME_DEFAULT,
+    feature_batching=_CYTOME_DEFAULT,
+    min_total_count=_CYTOME_DEFAULT,
+    output_format=_CYTOME_DEFAULT,
+    compute_on_fly=_CYTOME_DEFAULT,
+    use_cached_stats=_CYTOME_DEFAULT,
+    iqr_normalize=_CYTOME_DEFAULT,
+    q_upper=_CYTOME_DEFAULT,
+    q_lower=_CYTOME_DEFAULT,
 ):
     """\
     Marker gene identification for single-cell sequencing data using COSG.
@@ -70,8 +240,16 @@ def cosg(
         Subset of cell groups, e.g. [`'g1'`, `'g2'`, `'g3'`], to which comparison shall be restricted. The default value is 'all', and all groups will be compared.
     mu : float, default 1
         The penalty parameter restricting marker genes expressing in non-target cell groups. Larger value represents more strict restrictions. mu should be non-negative, and by default, mu = 1.
-    remove_lowly_expressed : bool, default False
-        If True, genes that express a percentage of target cells smaller than a specific value (`expressed_pct`) are not considered as marker genes for the target cells. The default value is False.
+    remove_lowly_expressed : bool, default True
+        If True, genes that express a percentage of target cells smaller than a specific value (`expressed_pct`) are not considered as marker genes for the target cells.
+
+        .. note::
+           Default changed from ``False`` to ``True`` to align with the
+           cytome-streaming variant (``run_cosg_cytome``), which has
+           always defaulted to ``True``. The 10% expression filter is the
+           recommended default for marker detection across both backends —
+           pass ``remove_lowly_expressed=False`` explicitly if you need
+           the previous unfiltered behaviour.
     expressed_pct : float, optional, default 0.1
         When `remove_lowly_expressed` is set to True, genes that express a percentage of target cells smaller than a specific value (`expressed_pct`) are not considered as marker genes for the target cells. The default value for `expressed_pct` is 0.1 (10%).
     expressed_min_num_cells_in_target_group : int, default 3
@@ -109,7 +287,32 @@ def cosg(
         Controls the verbosity of logging messages, defaults to 0. Higher values produce more detailed messages.
     copy: bool, default False
         If True, returns a copy of `adata` with the computed embeddings instead of modifying in place. Defaults to False.
- 
+    device : str, default 'cpu'
+        Computation backend. Options:
+
+        - ``'cpu'``: Use CPU (NumPy/SciPy). Default behavior, no extra dependencies.
+        - ``'gpu'``: Use GPU (CuPy/cuSPARSE). Requires ``pip install cosg[gpu]``.
+        - ``'auto'``: Use GPU if CuPy is available, otherwise fall back to CPU.
+    gpu_chunk_size : int or None, default None
+        Controls GPU streaming behavior for memory-efficient GPU processing.
+
+        - None (default): Auto-select based on available GPU memory. Uses
+          monolithic transfer when VRAM is sufficient (~15 GB), falls back
+          to chunked streaming (~1 GB) when VRAM is tight.
+        - 0 or n_cells: Force monolithic GPU transfer (requires ~15+ GB VRAM).
+        - N (positive int): Use N cells per GPU chunk.
+    cpu_chunk_size : int or None, default None
+        Controls CPU streaming behavior for memory-efficient processing.
+
+        - None (default): Auto-select chunk size based on available RAM.
+          Uses chunked cell-axis accumulation that processes cells in blocks,
+          reducing peak memory by ~2x while improving speed by ~1.8x.
+        - 0: Use legacy CPU path (non-streaming). Required for batch_key mode.
+          Slower and uses more memory, but produces bit-identical results to
+          COSG versions prior to v1.2.
+        - N (positive int): Use N cells per chunk. Smaller chunks use less
+          memory but may be slightly slower due to per-chunk overhead.
+
     Returns
     -------
     None or AnnData
@@ -124,6 +327,17 @@ def cosg(
         The marker genes and their COSG scores are also summarized and stored separately by group in
         adata.uns[`key_added`]['COSG'] if `return_by_group = True`.
     
+    Notes
+    -----
+    COSG does not modify the input AnnData object's expression data (adata.X).
+    It is safe to call cosg() without copying adata first.
+
+    The function expects log-normalized expression data in adata.X (the output
+    of sc.pp.normalize_total + sc.pp.log1p). Raw counts can be used via
+    use_raw=True if adata.raw is set.
+
+    GPU acceleration requires CuPy: pip install cupy-cuda12x
+
     Examples
     --------
     >>> import cosg as cosg
@@ -142,9 +356,94 @@ def cosg(
     ...     cmap='Spectral_r'
     ... )
     """
+    # Round 8 (2026-05-23): polymorphic dispatch on the first argument.
+    # When ``adata`` is a cytome path (str / Path) or an open cytome
+    # Dataset, delegate to ``run_cosg_cytome``. Otherwise fall through
+    # to the existing AnnData implementation below — that body is
+    # unchanged from pre-Round-8.
+    # Round 9 (2026-05-23): forward shared ``layer`` kwarg; no
+    # ``cytome_layer`` (collapsed into ``layer``).
+    if _is_cytome_input(adata):
+        return _dispatch_to_cytome(
+            adata,
+            groupby=groupby,
+            n_genes_user=n_genes_user,
+            mu=mu,
+            remove_lowly_expressed=remove_lowly_expressed,
+            expressed_pct=expressed_pct,
+            expressed_min_num_cells_in_target_group=
+                expressed_min_num_cells_in_target_group,
+            device=device,
+            verbosity=verbosity,
+            layer=layer,
+            batch_key=batch_key,
+            batch_cell_number_threshold=batch_cell_number_threshold,
+            # AnnData-only kwargs — reject if any non-default.
+            _anndata_only_values=dict(
+                groups=groups,
+                key_added=key_added,
+                calculate_logfoldchanges=calculate_logfoldchanges,
+                use_raw=use_raw,
+                reference=reference,
+                return_by_group=return_by_group,
+                column_delimiter=column_delimiter,
+                copy=copy,
+                gpu_chunk_size=gpu_chunk_size,
+                cpu_chunk_size=cpu_chunk_size,
+            ),
+            # Cytome-only kwargs — forward when non-sentinel.
+            modality=modality,
+            cell_mask=cell_mask,
+            batch_size=batch_size,
+            feature_batching=feature_batching,
+            min_total_count=min_total_count,
+            output_format=output_format,
+            compute_on_fly=compute_on_fly,
+            use_cached_stats=use_cached_stats,
+            iqr_normalize=iqr_normalize,
+            q_upper=q_upper,
+            q_lower=q_lower,
+        )
+
+    if not _is_anndata(adata):
+        raise TypeError(
+            f"cosg.cosg expected an AnnData, str, pathlib.Path, or "
+            f"cytome Dataset as the first argument; got "
+            f"{type(adata).__name__!r}."
+        )
+
+    # AnnData path — reject any cytome-only kwarg that was set.
+    # Round 9 (2026-05-23): ``cytome_layer`` removed from this list —
+    # the shared ``layer`` kwarg handles both backends now.
+    _cytome_set = {
+        k: v for k, v in {
+            "modality": modality, "cell_mask": cell_mask,
+            "batch_size": batch_size, "feature_batching": feature_batching,
+            "min_total_count": min_total_count,
+            "output_format": output_format,
+            "compute_on_fly": compute_on_fly,
+            "use_cached_stats": use_cached_stats,
+            "iqr_normalize": iqr_normalize,
+            "q_upper": q_upper, "q_lower": q_lower,
+        }.items() if v is not _CYTOME_DEFAULT
+    }
+    if _cytome_set:
+        bad = ", ".join(sorted(_cytome_set))
+        raise TypeError(
+            f"cosg.cosg(AnnData, ...) does not accept cytome-only "
+            f"kwarg(s): {bad}. Drop the kwarg(s), or pass a cytome "
+            f"path / open cytome Dataset as the first argument instead."
+        )
+
     ### Validate the input parameter mu
     if mu < 0:
         raise ValueError("Parameter mu must be non-negative.")
+
+    ### Resolve device backend
+    from ._backend import get_device
+    _device = get_device(device)
+    if verbosity > 0 and _device == 'gpu':
+        print("[cosg] Using GPU (CuPy) backend.")
         
         
     # Validate groupby column exists
@@ -195,7 +494,7 @@ def cosg(
         )
     
     adata = adata.copy() if copy else adata
-        
+
     if layer is not None:
         if use_raw:
             raise ValueError("Cannot specify `layer` and have `use_raw = True`.")
@@ -270,311 +569,405 @@ def cosg(
     
     
     n_cluster=len(groups_order)
-    
+
     n_cell=cellxgene.shape[0]
-    
+
     ### Efficiently create a sparse matrix for the cluster_mat matrix
     group_to_row = {group: i for i, group in enumerate(groups_order)}
     row_indices = np.array([group_to_row[group] for group in group_info])
     col_indices = np.arange(n_cell)
     data = np.ones_like(col_indices, dtype=int)
     cluster_mat = csr_matrix((data, (row_indices, col_indices)), shape=(n_cluster, n_cell))
-    
-    ### Provide a batch_key option
-    if batch_key is not None:
-        
-        # Validate batch_key exists
-        if batch_key not in adata.obs.columns:
-            raise ValueError(
-                f"batch_key '{batch_key}' not found in adata.obs. "
-                f"Available columns: {list(adata.obs.columns)}"
-            )
-        
-        
-        batch_info = adata.obs[batch_key].values  
-        unique_batches = np.unique(batch_info)
 
-        n_gene = cellxgene.shape[1]  # number of genes
-        
-        if sparse.issparse(cellxgene):
-            # Initialize a sparse accumulator and valid count vector
-            accum = sparse.csr_matrix((n_gene, n_cluster), dtype=float)
-            
-            ### This vector is used to keep track of how many batches provide valid
-            ### (i.e. above the batch_cell_number_threshold) data for each cluster. 
-            valid_counts = np.zeros(n_cluster, dtype=float)
+    # ── GPU path ─────────────────────────────────────────────────────────
+    _gpu_full_path = False  # flag: True when gpu_core_cosg_full() is used
+    _gpu_chunked_path = False  # flag: True when gpu_core_cosg_chunked() is used
+    _cpu_streaming_used = False  # flag: True when cpu_core_cosg_chunked() is used
+    if _device == 'gpu':
+        from ._gpu import (gpu_core_cosg, gpu_core_cosg_batched,
+                           gpu_core_cosg_chunked, _should_use_chunked)
 
-            for batch in unique_batches:
-                indices = np.flatnonzero(batch_info == batch)
-                if indices.size == 0:
-                    continue
-
-                # Compute number of cells per cluster for this batch.
-                cluster_counts = np.array(cluster_mat[:, indices].sum(axis=1)).flatten()
-                # valid_mask: 1.0 for clusters with enough cells, 0.0 otherwise
-                valid_mask = (cluster_counts >= batch_cell_number_threshold).astype(float)
-                if not np.any(valid_mask):
-                    continue
-
-                # Compute cosine similarity for the batch (sparse output)
-                sim_batch = cosine_similarity(
-                    X=cellxgene[indices].T,
-                    Y=cluster_mat[:, indices],
-                    dense_output=False
-                )  # shape: (n_gene, n_cluster)
-                # Multiply each column by valid_mask using a sparse diagonal matrix
-                valid_diag = sparse.diags(valid_mask)
-                sim_batch_valid = sim_batch.dot(valid_diag)
-
-                accum = accum + sim_batch_valid
-                valid_counts += valid_mask
-
-            # Create a diagonal matrix for column-wise division.
-            # For clusters with valid_counts==0, we assign np.nan.
-            divisor = np.array([1/v if v > 0 else np.nan for v in valid_counts])
-            divisor_diag = sparse.diags(divisor)
-            # Multiply accumulator by divisor_diag to scale each column appropriately.
-            accum = accum.dot(divisor_diag)
-            cosine_sim = accum
-        else:
-            # Dense branch: use dense arrays.
-            accum = np.zeros((n_gene, n_cluster))
-            valid_counts = np.zeros(n_cluster)
-            for batch in unique_batches:
-                indices = np.flatnonzero(batch_info == batch)
-                if indices.size == 0:
-                    continue
-                cluster_counts = np.array(cluster_mat[:, indices].sum(axis=1)).flatten()
-                valid_mask = (cluster_counts >= batch_cell_number_threshold).astype(float)
-                if not np.any(valid_mask):
-                    continue
-                sim_batch = cosine_similarity(
-                    X=cellxgene[indices].T,
-                    Y=cluster_mat[:, indices],
-                    dense_output=True
+        if batch_key is not None:
+            # Validate batch_key exists
+            if batch_key not in adata.obs.columns:
+                raise ValueError(
+                    f"batch_key '{batch_key}' not found in adata.obs. "
+                    f"Available columns: {list(adata.obs.columns)}"
                 )
-                sim_batch = sim_batch * valid_mask  # broadcasting valid_mask along columns
+            batch_info = adata.obs[batch_key].values
+            unique_batches = np.unique(batch_info)
+
+            genexlambda = gpu_core_cosg_batched(
+                cellxgene, cluster_mat, mu,
+                batch_info=batch_info,
+                unique_batches=unique_batches,
+                batch_cell_number_threshold=batch_cell_number_threshold,
+                is_sparse_input=sparse.issparse(cellxgene),
+                verbosity=verbosity
+            )
+        else:
+            # Decide: chunked streaming vs monolithic
+            use_chunked = (gpu_chunk_size is not None or
+                           _should_use_chunked(n_cell, cellxgene.shape[1],
+                                               sparse.issparse(cellxgene), cellxgene))
+            if use_chunked:
+                genexlambda = gpu_core_cosg_chunked(
+                    cellxgene, cluster_mat, mu,
+                    is_sparse_input=sparse.issparse(cellxgene),
+                    remove_lowly_expressed=remove_lowly_expressed,
+                    expressed_pct=expressed_pct if expressed_pct is not None else 0.1,
+                    expressed_min_num_cells_in_target_group=expressed_min_num_cells_in_target_group,
+                    chunk_size=gpu_chunk_size,
+                    verbosity=verbosity
+                )
+                _gpu_chunked_path = True
+            else:
+                genexlambda = gpu_core_cosg(
+                    cellxgene, cluster_mat, mu,
+                    is_sparse_input=sparse.issparse(cellxgene),
+                    remove_lowly_expressed=remove_lowly_expressed,
+                    expressed_pct=expressed_pct if expressed_pct is not None else 0.1,
+                    expressed_min_num_cells_in_target_group=expressed_min_num_cells_in_target_group,
+                    verbosity=verbosity
+                )
+    
+    # ── CPU path ──────────────────────────────────────────────────────────
+    else:
+        _cpu_streaming_used = False
+
+        # CPU streaming path (non-batch)
+        if cpu_chunk_size != 0 and batch_key is None:
+            from ._cpu_streaming import cpu_core_cosg_chunked
+
+            genexlambda = cpu_core_cosg_chunked(
+                cellxgene, cluster_mat, mu,
+                is_sparse_input=sparse.issparse(cellxgene),
+                remove_lowly_expressed=remove_lowly_expressed,
+                expressed_pct=expressed_pct if expressed_pct is not None else 0.1,
+                expressed_min_num_cells_in_target_group=expressed_min_num_cells_in_target_group,
+                chunk_size=cpu_chunk_size,  # None = auto
+                verbosity=verbosity
+            )
+            _cpu_streaming_used = True
+
+        # CPU streaming batch path
+        elif batch_key is not None and cpu_chunk_size != 0:
+            from ._cpu_streaming import (cpu_cosine_sim_chunked,
+                                         _apply_cosg_penalty_cpu)
+
+            if batch_key not in adata.obs.columns:
+                raise ValueError(
+                    f"batch_key '{batch_key}' not found in adata.obs. "
+                    f"Available columns: {list(adata.obs.columns)}"
+                )
+
+            batch_info = adata.obs[batch_key].values
+            unique_batches = np.unique(batch_info)
+            n_gene = cellxgene.shape[1]
+
+            accum = np.zeros((n_gene, n_cluster), dtype=np.float64)
+            valid_counts = np.zeros(n_cluster, dtype=np.float64)
+
+            for batch in unique_batches:
+                indices = np.flatnonzero(batch_info == batch)
+                if indices.size == 0:
+                    continue
+
+                cluster_counts = np.array(
+                    cluster_mat[:, indices].sum(axis=1)
+                ).flatten()
+                valid_mask = (
+                    cluster_counts >= batch_cell_number_threshold
+                ).astype(float)
+                if not np.any(valid_mask):
+                    continue
+
+                sim_batch = cpu_cosine_sim_chunked(
+                    cellxgene[indices],
+                    cluster_mat[:, indices],
+                    is_sparse_input=sparse.issparse(cellxgene),
+                    chunk_size=cpu_chunk_size,
+                    verbosity=verbosity
+                )
+
+                sim_batch *= valid_mask[np.newaxis, :]
                 accum += sim_batch
                 valid_counts += valid_mask
+
             for j in range(n_cluster):
                 if valid_counts[j] > 0:
                     accum[:, j] /= valid_counts[j]
                 else:
-                    accum[:, j] = np.nan  # or zero if you prefer
+                    accum[:, j] = np.nan
+
             cosine_sim = accum
+            cosine_sim_clean = np.nan_to_num(cosine_sim, nan=0.0)
+            genexlambda = _apply_cosg_penalty_cpu(cosine_sim_clean, mu)
 
-    else:
-        # no batch splitting
-        if sparse.issparse(cellxgene):
-            ### the dimension is: Gene x lambda
-            cosine_sim = cosine_similarity(
-                X=cellxgene.T, 
-                Y=cluster_mat, 
-                dense_output=False
-            )
-        else:
-            ### Convert to dense matrix
-            cluster_mat=cluster_mat.toarray()
-            ## Not using sparse matrix    
-            cosine_sim=cosine_similarity(X=cellxgene.T, Y=cluster_mat, dense_output=True)     
-    
-    if sparse.issparse(cellxgene):
-        ### the dimension is: Gene x lambda
-        # cosine_sim=cosine_similarity(X=cellxgene.T,Y=cluster_mat,dense_output=False) 
-        
-        ### Instead of using cosine_sim.multiply(cosine_sim), the following commands could keep the nonzero values order the same, which would be very useful for the downstream analysis
-        ### Because all the calculation would be performed in 1D then
-        genexlambda=cosine_sim.copy()
-        genexlambda.data=np.multiply(genexlambda.data, genexlambda.data)
-        #cosine_sim_data = cosine_sim.data  # Direct access to non-zero elements
-        e_power2_sum = np.array(genexlambda.sum(axis=1)).flatten()  # Row-wise sum as a dense array
-        if mu==1:
-            ### The np.diff(cosine_sim.indptr) is cool because np.diff(genexlambda.indptr) gives the number of non-zero elements per row
-            ### this avoids generating a large dense matrix and subseting it
-            ### as the .data will list all the nonzero values row by row, so every values are in the same order
-            ### add this basically gives the number of times (in an order, from pos 0 to pos N) to repreat for each element in the array
-            genexlambda.data = genexlambda.data / np.repeat(e_power2_sum, np.diff(genexlambda.indptr))
-        else:
-            genexlambda.data=genexlambda.data/((1 - mu) * genexlambda.data + mu * np.repeat(e_power2_sum, np.diff(genexlambda.indptr)))
-        ### Because I use genexlambda.data=np.multiply(genexlambda.data, genexlambda.data), so the nonzero values order are the same
-        genexlambda.data=np.multiply(genexlambda.data, cosine_sim.data)
-    
-    ### If the cellxgene is not a sparse matrix
-    else:
-#         ### Convert to dense matrix
-#         cluster_mat=cluster_mat.toarray()
-        
-#         ## Not using sparse matrix    
-#         cosine_sim=cosine_similarity(X=cellxgene.T, Y=cluster_mat, dense_output=True) 
+            # Apply expressed_pct filter using chunked nnz computation
+            if remove_lowly_expressed:
+                from ._cpu_streaming import cpu_nnz_counts_chunked
+                _ept = expressed_pct if expressed_pct is not None else 0.1
 
-        pos_nonzero=cosine_sim!=0
-        e_power2=np.multiply(cosine_sim,cosine_sim)
-        e_power2_sum=np.sum(e_power2,axis=1)
-        e_power2[pos_nonzero]=np.true_divide(e_power2[pos_nonzero],(1-mu)*e_power2[pos_nonzero]+mu*(np.dot(e_power2_sum.reshape(e_power2_sum.shape[0],1),np.repeat(1,e_power2.shape[1]).reshape(1,e_power2.shape[1]))[pos_nonzero]))
-        e_power2[pos_nonzero]=np.multiply(e_power2[pos_nonzero],cosine_sim[pos_nonzero])
-        genexlambda=e_power2
+                nnz_counts = cpu_nnz_counts_chunked(
+                    cellxgene, cluster_mat,
+                    is_sparse_input=sparse.issparse(cellxgene),
+                    chunk_size=cpu_chunk_size,
+                    verbosity=verbosity
+                )
+
+                group_sizes = np.array(cluster_mat.sum(axis=1)).ravel()
+                for k in range(n_cluster):
+                    n_cells_k = group_sizes[k]
+                    threshold = max(
+                        n_cells_k * _ept,
+                        expressed_min_num_cells_in_target_group
+                    )
+                    genexlambda[nnz_counts[:, k] < threshold, k] = -1
+                del nnz_counts
+
+            _cpu_streaming_used = True
+            del cosine_sim, cosine_sim_clean
+
+        # Original CPU path (batch mode legacy or streaming explicitly disabled)
+        elif batch_key is not None:
+            
+            # Validate batch_key exists
+            if batch_key not in adata.obs.columns:
+                raise ValueError(
+                    f"batch_key '{batch_key}' not found in adata.obs. "
+                    f"Available columns: {list(adata.obs.columns)}"
+                )
+            
+            
+            batch_info = adata.obs[batch_key].values  
+            unique_batches = np.unique(batch_info)
+
+            n_gene = cellxgene.shape[1]  # number of genes
+            
+            if sparse.issparse(cellxgene):
+                # Initialize a sparse accumulator and valid count vector
+                accum = sparse.csr_matrix((n_gene, n_cluster), dtype=float)
+                
+                ### This vector is used to keep track of how many batches provide valid
+                ### (i.e. above the batch_cell_number_threshold) data for each cluster. 
+                valid_counts = np.zeros(n_cluster, dtype=float)
+
+                for batch in unique_batches:
+                    indices = np.flatnonzero(batch_info == batch)
+                    if indices.size == 0:
+                        continue
+
+                    # Compute number of cells per cluster for this batch.
+                    cluster_counts = np.array(cluster_mat[:, indices].sum(axis=1)).flatten()
+                    # valid_mask: 1.0 for clusters with enough cells, 0.0 otherwise
+                    valid_mask = (cluster_counts >= batch_cell_number_threshold).astype(float)
+                    if not np.any(valid_mask):
+                        continue
+
+                    # Compute cosine similarity for the batch (sparse output)
+                    sim_batch = cosine_similarity(
+                        X=cellxgene[indices].T,
+                        Y=cluster_mat[:, indices],
+                        dense_output=False
+                    )  # shape: (n_gene, n_cluster)
+                    # Multiply each column by valid_mask using a sparse diagonal matrix
+                    valid_diag = sparse.diags(valid_mask)
+                    sim_batch_valid = sim_batch.dot(valid_diag)
+
+                    accum = accum + sim_batch_valid
+                    valid_counts += valid_mask
+
+                # Create a diagonal matrix for column-wise division.
+                # For clusters with valid_counts==0, we assign np.nan.
+                divisor = np.array([1/v if v > 0 else np.nan for v in valid_counts])
+                divisor_diag = sparse.diags(divisor)
+                # Multiply accumulator by divisor_diag to scale each column appropriately.
+                accum = accum.dot(divisor_diag)
+                cosine_sim = accum
+            else:
+                # Dense branch: use dense arrays.
+                accum = np.zeros((n_gene, n_cluster))
+                valid_counts = np.zeros(n_cluster)
+                for batch in unique_batches:
+                    indices = np.flatnonzero(batch_info == batch)
+                    if indices.size == 0:
+                        continue
+                    cluster_counts = np.array(cluster_mat[:, indices].sum(axis=1)).flatten()
+                    valid_mask = (cluster_counts >= batch_cell_number_threshold).astype(float)
+                    if not np.any(valid_mask):
+                        continue
+                    sim_batch = cosine_similarity(
+                        X=cellxgene[indices].T,
+                        Y=cluster_mat[:, indices],
+                        dense_output=True
+                    )
+                    sim_batch = sim_batch * valid_mask  # broadcasting valid_mask along columns
+                    accum += sim_batch
+                    valid_counts += valid_mask
+                for j in range(n_cluster):
+                    if valid_counts[j] > 0:
+                        accum[:, j] /= valid_counts[j]
+                    else:
+                        accum[:, j] = np.nan  # or zero if you prefer
+                cosine_sim = accum
+
+        else:
+            # no batch splitting
+            if sparse.issparse(cellxgene):
+                ### the dimension is: Gene x lambda
+                cosine_sim = cosine_similarity(
+                    X=cellxgene.T, 
+                    Y=cluster_mat, 
+                    dense_output=False
+                )
+            else:
+                ### Convert to dense matrix
+                cluster_mat=cluster_mat.toarray()
+                ## Not using sparse matrix    
+                cosine_sim=cosine_similarity(X=cellxgene.T, Y=cluster_mat, dense_output=True)     
+        
+        if not _cpu_streaming_used:
+            if sparse.issparse(cellxgene):
+                ### the dimension is: Gene x lambda
+
+                ### Instead of using cosine_sim.multiply(cosine_sim), the following commands could keep the nonzero values order the same, which would be very useful for the downstream analysis
+                ### Because all the calculation would be performed in 1D then
+                genexlambda=cosine_sim.copy()
+                genexlambda.data=np.multiply(genexlambda.data, genexlambda.data)
+                #cosine_sim_data = cosine_sim.data  # Direct access to non-zero elements
+                e_power2_sum = np.array(genexlambda.sum(axis=1)).flatten()  # Row-wise sum as a dense array
+                if mu==1:
+                    ### The np.diff(cosine_sim.indptr) is cool because np.diff(genexlambda.indptr) gives the number of non-zero elements per row
+                    ### this avoids generating a large dense matrix and subseting it
+                    ### as the .data will list all the nonzero values row by row, so every values are in the same order
+                    ### add this basically gives the number of times (in an order, from pos 0 to pos N) to repreat for each element in the array
+                    genexlambda.data = genexlambda.data / np.repeat(e_power2_sum, np.diff(genexlambda.indptr))
+                else:
+                    genexlambda.data=genexlambda.data/((1 - mu) * genexlambda.data + mu * np.repeat(e_power2_sum, np.diff(genexlambda.indptr)))
+                ### Because I use genexlambda.data=np.multiply(genexlambda.data, genexlambda.data), so the nonzero values order are the same
+                genexlambda.data=np.multiply(genexlambda.data, cosine_sim.data)
+
+            ### If the cellxgene is not a sparse matrix
+            else:
+                pos_nonzero=cosine_sim!=0
+                e_power2=np.multiply(cosine_sim,cosine_sim)
+                e_power2_sum=np.sum(e_power2,axis=1)
+                e_power2[pos_nonzero]=np.true_divide(e_power2[pos_nonzero],(1-mu)*e_power2[pos_nonzero]+mu*(np.dot(e_power2_sum.reshape(e_power2_sum.shape[0],1),np.repeat(1,e_power2.shape[1]).reshape(1,e_power2.shape[1]))[pos_nonzero]))
+                e_power2[pos_nonzero]=np.multiply(e_power2[pos_nonzero],cosine_sim[pos_nonzero])
+                genexlambda=e_power2
 
     ### Refer to scanpy
     rank_stats=None
-    
-    ### Whether to calculate logfoldchanges, because this is required in scanpy 1.8
-    anndata_obj = None  # Initialize before conditional creation
-    if calculate_logfoldchanges:
-        ### Calculate basic stats
-        ### Refer to Scanpy
-        # for clarity, rename variable
-        if groups == 'all':
-            groups_order2 = 'all'
-        elif isinstance(groups, (str, int)):
-            raise ValueError('Specify a sequence of groups')
-        else:
-            groups_order2 = list(groups)
-            if isinstance(groups_order2[0], int):
-                groups_order2 = [str(n) for n in groups_order2]
-            if reference != 'rest' and reference not in set(groups_order2):
-                groups_order2 += [reference]
-        if reference != 'rest' and reference not in adata.obs[groupby].cat.categories:
-            cats = adata.obs[groupby].cat.categories.tolist()
-            raise ValueError(
-                f'reference = {reference} needs to be one of groupby = {cats}.'
-            )
-        pts=False
-        anndata_obj = _RankGenes(adata, groups_order2, groupby, reference, use_raw, layer, pts)
-        anndata_obj._basic_stats()
-    
-    
-    ### Refer to Scanpy
-    # for correct getnnz calculation
-    ### get non-zeros for columns
-    if sparse.issparse(cellxgene):
-        cellxgene.eliminate_zeros()
-    if sparse.issparse(cellxgene):
-        get_nonzeros = lambda X: X.getnnz(axis=0)
-    else:
-        get_nonzeros = lambda X: np.count_nonzero(X, axis=0)
-    
-    
-    # Pre-allocate result containers BEFORE the loop
-    results_names = {}
-    results_scores = {}
-    results_logfoldchanges = {} if calculate_logfoldchanges else None
-    
-    # ### Convert to dense matrix, as the genexlambda is likely not sparse
-    # if sparse.issparse(genexlambda):
-    #     genexlambda_dense = genexlambda.toarray()
-    # else:
-    #     genexlambda_dense = genexlambda
-    
-    #### Convert to dense matrix, as the genexlambda is likely not sparse
-    # if sparse.issparse(genexlambda):
-        # genexlambda = genexlambda.toarray()  # Reassign to same variable
 
-        
-    # order_i=0
-    # for group_i in groups_order:
-    for order_i, group_i in enumerate(groups_order):
-        idx_i=group_info==group_i 
-        ### Convert to numpy array
-        idx_i=idx_i.values
-        
-        # REVERT to original column-by-column extraction
-        if sparse.issparse(genexlambda):
-            scores = genexlambda[:, order_i].toarray()[:, 0]
-        else:
-            # scores = genexlambda[:, order_i].copy()  # Copy only if modifying
-            scores = genexlambda[:, order_i]  # No copy, because we only use each column once, genexlambda is not used after the loop
+    # ── Per-group loop (CPU, batched-GPU, and chunked-GPU paths) ─────────
+    if True:
 
-
-        ## Compare the most ideal case to the worst case
-        # if sparse.issparse(cellxgene):
-        #     scores=genexlambda[:,order_i].toarray()[:,0] ###Changed .A to .toarray() for future support
-        # else:
-        #     scores=genexlambda[:,order_i]
-        
-        
-        # scores = genexlambda[:, order_i]
-        # ### Mask these genes expressed in less than 3 cells in the cluster of interest
-        # if remove_lowly_expressed:
-        #     n_cells_expressed=get_nonzeros(cellxgene[idx_i])
-        #     n_cells_i=np.sum(idx_i)
-        #     scores[n_cells_expressed<n_cells_i*expressed_pct]= -1
-            
-        if remove_lowly_expressed:
-            # scores = genexlambda[:, order_i].copy()  # Copy because we modify
-            n_cells_expressed = get_nonzeros(cellxgene[idx_i])
-            n_cells_i = np.sum(idx_i)
-            
-            
-            # Warn if cluster is smaller than minimum threshold
-            if n_cells_i < expressed_min_num_cells_in_target_group:
-                if verbosity > 0:
-                    print(
-                        f"Warning: Group '{group_i}' has only {n_cells_i} cells, which is fewer than "
-                        f"expressed_min_num_cells_in_target_group={expressed_min_num_cells_in_target_group}. "
-                        f"All genes will be filtered out for this group."
-                    )
-            
-            # Use the maximum of percentage-based and absolute minimum threshold
-            threshold = max(
-                n_cells_i * expressed_pct, 
-                expressed_min_num_cells_in_target_group
-            )
-            scores[n_cells_expressed < threshold] = -1
-        # else:
-        #     scores = genexlambda[:, order_i]  # View is fine, no modification
-
-
-        global_indices = _select_top_n(scores, n_genes_user)
-
-                        
-        # # Initialize the DataFrame if rank_stats is None
-        # if rank_stats is None:
-        #     rank_stats = pd.DataFrame()
-
-        # Prepare data for new columns
-        # columns_data = {
-        #     (group_i, 'names'): adata.var_names.values[global_indices],
-        #     (group_i, 'scores'): scores[global_indices]
-        # }
-        
-        # Store results in dictionaries instead of concatenating DataFrames
-        results_names[group_i] = adata.var_names.values[global_indices]
-        results_scores[group_i] = scores[global_indices]
-        
-        if calculate_logfoldchanges and anndata_obj is not None:
-            group_index = np.where(anndata_obj.groups_order == group_i)[0][0]
-            if anndata_obj.means is not None:
-                mean_group = anndata_obj.means[group_index]
-                mean_rest = (
-                    anndata_obj.means_rest[group_index]
-                    if anndata_obj.ireference is None
-                    else anndata_obj.means[anndata_obj.ireference]
+        ### Whether to calculate logfoldchanges, because this is required in scanpy 1.8
+        anndata_obj = None  # Initialize before conditional creation
+        if calculate_logfoldchanges:
+            ### Calculate basic stats
+            ### Refer to Scanpy
+            # for clarity, rename variable
+            if groups == 'all':
+                groups_order2 = 'all'
+            elif isinstance(groups, (str, int)):
+                raise ValueError('Specify a sequence of groups')
+            else:
+                groups_order2 = list(groups)
+                if isinstance(groups_order2[0], int):
+                    groups_order2 = [str(n) for n in groups_order2]
+                if reference != 'rest' and reference not in set(groups_order2):
+                    groups_order2 += [reference]
+            if reference != 'rest' and reference not in adata.obs[groupby].cat.categories:
+                cats = adata.obs[groupby].cat.categories.tolist()
+                raise ValueError(
+                    f'reference = {reference} needs to be one of groupby = {cats}.'
                 )
-                foldchanges = (anndata_obj.expm1_func(mean_group) + 1e-9) / (
-                    anndata_obj.expm1_func(mean_rest) + 1e-9
-                )  # Avoid division by zero
-                # columns_data[(group_i, 'logfoldchanges')] = np.log2(foldchanges[global_indices])
-                results_logfoldchanges[group_i] = np.log2(foldchanges[global_indices])
+            pts=False
+            anndata_obj = _RankGenes(adata, groups_order2, groupby, reference, use_raw, layer, pts)
+            anndata_obj._basic_stats()
 
 
-#         # Create a new DataFrame for the current group
-#         new_data = pd.DataFrame(columns_data)
+        ### Refer to Scanpy
+        # for correct getnnz calculation
+        ### get non-zeros for columns
+        _skip_downstream_filter = (_device == 'gpu') or (_device != 'gpu' and _cpu_streaming_used)
+        if not _skip_downstream_filter:
+            # Count true nonzeros without mutating the input matrix
+            # This avoids eliminate_zeros() which would modify adata.X in-place
+            if sparse.issparse(cellxgene):
+                get_nonzeros = lambda X: np.asarray((X != 0).sum(axis=0)).ravel()
+            else:
+                get_nonzeros = lambda X: np.count_nonzero(X, axis=0)
 
-#         # Concatenate with rank_stats
-#         rank_stats = pd.concat([rank_stats, new_data], axis=1)
-    
-        # order_i = order_i + 1
-    
-    # Build DataFrame once after the loop
-    columns_data = {}
-    for group_i in groups_order:
-        columns_data[(group_i, 'names')] = results_names[group_i]
-        columns_data[(group_i, 'scores')] = results_scores[group_i]
-        if calculate_logfoldchanges and group_i in results_logfoldchanges:
-            columns_data[(group_i, 'logfoldchanges')] = results_logfoldchanges[group_i]
-    rank_stats = pd.DataFrame(columns_data)
-    
-    
+
+        # Pre-allocate result containers BEFORE the loop
+        results_names = {}
+        results_scores = {}
+        results_logfoldchanges = {} if calculate_logfoldchanges else None
+
+        for order_i, group_i in enumerate(groups_order):
+            idx_i=group_info==group_i
+            ### Convert to numpy array
+            idx_i=idx_i.values
+
+            # REVERT to original column-by-column extraction
+            if sparse.issparse(genexlambda):
+                scores = genexlambda[:, order_i].toarray()[:, 0]
+            else:
+                scores = genexlambda[:, order_i]
+
+            if remove_lowly_expressed and not _skip_downstream_filter:
+                # GPU and CPU streaming paths already applied expressed_pct filter internally
+                n_cells_expressed = get_nonzeros(cellxgene[idx_i])
+                n_cells_i = np.sum(idx_i)
+
+                # Warn if cluster is smaller than minimum threshold
+                if n_cells_i < expressed_min_num_cells_in_target_group:
+                    if verbosity > 0:
+                        print(
+                            f"Warning: Group '{group_i}' has only {n_cells_i} cells, which is fewer than "
+                            f"expressed_min_num_cells_in_target_group={expressed_min_num_cells_in_target_group}. "
+                            f"All genes will be filtered out for this group."
+                        )
+
+                # Use the maximum of percentage-based and absolute minimum threshold
+                threshold = max(
+                    n_cells_i * expressed_pct,
+                    expressed_min_num_cells_in_target_group
+                )
+                scores[n_cells_expressed < threshold] = -1
+
+            global_indices = _select_top_n(scores, n_genes_user)
+
+            # Store results in dictionaries instead of concatenating DataFrames
+            results_names[group_i] = adata.var_names.values[global_indices]
+            results_scores[group_i] = scores[global_indices]
+
+            if calculate_logfoldchanges and anndata_obj is not None:
+                group_index = np.where(anndata_obj.groups_order == group_i)[0][0]
+                if anndata_obj.means is not None:
+                    mean_group = anndata_obj.means[group_index]
+                    mean_rest = (
+                        anndata_obj.means_rest[group_index]
+                        if anndata_obj.ireference is None
+                        else anndata_obj.means[anndata_obj.ireference]
+                    )
+                    foldchanges = (anndata_obj.expm1_func(mean_group) + 1e-9) / (
+                        anndata_obj.expm1_func(mean_rest) + 1e-9
+                    )
+                    results_logfoldchanges[group_i] = np.log2(foldchanges[global_indices])
+
+        # Build DataFrame once after the loop
+        columns_data = {}
+        for group_i in groups_order:
+            columns_data[(group_i, 'names')] = results_names[group_i]
+            columns_data[(group_i, 'scores')] = results_scores[group_i]
+            if calculate_logfoldchanges and group_i in results_logfoldchanges:
+                columns_data[(group_i, 'logfoldchanges')] = results_logfoldchanges[group_i]
+        rank_stats = pd.DataFrame(columns_data)
+
     #### also return a copy of the results showing the results by group
     if return_by_group:
         # Need to swap levels first to ensure attribute comes first, then cell group
@@ -997,10 +1390,7 @@ class _RankGenes:
                 adata_comp = adata.raw
             X = adata_comp.X
 
-        # for correct getnnz calculation
-        if sparse.issparse(X):
-            X.eliminate_zeros()
-
+        # Store reference without mutating the original matrix
         self.X = X
         self.var_names = adata_comp.var_names
 
@@ -1046,7 +1436,7 @@ class _RankGenes:
             del X_rest
 
         if sparse.issparse(self.X):
-            get_nonzeros = lambda X: X.getnnz(axis=0)
+            get_nonzeros = lambda X: np.asarray((X != 0).sum(axis=0)).ravel()
         else:
             get_nonzeros = lambda X: np.count_nonzero(X, axis=0)
 

@@ -14,7 +14,7 @@ authors = [
 maintainers = [
     { name = "Min Dai", email = "dai@broadinstitute.org" }
 ]
-readme = {text = "COSG: Accurate and fast cell marker gene identification", content-type = "text/plain"}
+readme = "README.rst"
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Environment :: Console",
@@ -39,17 +39,13 @@ classifiers = [
 
 dependencies = [
     "anndata>=0.8",
+    "scanpy>=1.6.0",
     "numpy>=1.17.0",
     "pandas>=0.21",
     "scikit-learn>=0.21.2",
     "scipy>=1.4",
     "matplotlib>=3.5.2",
     "networkx>=2.8.8",
-    # Declared directly rather than left to scanpy, which used to supply it
-    # transitively: cosg.py has a module-level `import numba` for the sparse
-    # mean/variance kernels, and relying on a transitive dependency for that
-    # is what broke a clean install.
-    "numba>=0.51",
     "typing-extensions",
 ]
 
@@ -63,19 +59,8 @@ Homepage = "https://genecell.github.io/COSG"
 gpu = [
     "cupy-cuda12x>=12.0.0",  # For CUDA 12.x; users on CUDA 11.x should: pip install cupy-cuda11x
 ]
-# plotMarkerDotplot wraps scanpy's sc.pl.dotplot and is the only part of COSG
-# that needs scanpy. 1.0.4 required scanpy for everyone; keeping it mandatory
-# costs a plain install ~60 MB and 9 packages (statsmodels, seaborn,
-# umap-learn, ...) for one plotting function. plotMarkerDendrogram and
-# plotMarkerStream do not need it -- their dendrogram ordering is computed by
-# cosg's own _dendrogram_order().
-dotplot = [
-    "scanpy>=1.6.0"
-]
 dev = [
-    "pre-commit",
-    "pytest",
-    "scanpy>=1.6.0",  # so the full suite, including the dotplot path, runs
+    "pre-commit"  # Static checking
 ]
 
 [tool.hatch.build.targets.wheel]

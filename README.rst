@@ -69,6 +69,44 @@ Development version:
 Release notes
 -------------
 
+**Release v1.1.0** (August 12, 2026)
+
+
+- Added a **streaming backend for** ``.cytome`` **datasets**: marker detection reads the file in chunks, so peak memory does not scale with the number of cells.
+
+- Added a **GPU path** (CuPy), selected with ``device='cpu' | 'gpu' | 'auto'`` on both the in-memory and streaming paths.
+
+- ``cosg.cosg()`` is now a **single polymorphic entry point**. It dispatches on its first argument:
+
+  - an ``AnnData`` takes the in-memory path and writes ``adata.uns[key_added]``
+  - a ``str`` or ``pathlib.Path`` to a ``.cytome`` file takes the streaming path and returns a dict
+  - an **open** ``CytomeDataset`` (from ``cytome.open()``) also takes the streaming path; the caller keeps ownership of it and it is **not** closed
+
+- Extended ``batch_key`` to the streaming, GPU and feature-batched paths.
+
+- Added ``output_format`` for the streaming path: ``'dict'``, ``'long'`` or ``'dense'``.
+
+- Added ``cosg.__version__``, which previously raised ``AttributeError``.
+
+- **scanpy is now an optional extra rather than a required dependency.** Only ``plotMarkerDotplot`` uses it, so a plain ``pip install cosg`` is ~60 MB and 9 packages lighter. Install ``pip install 'cosg[dotplot]'`` to keep that function; calling it without scanpy raises an error naming the extra. Cell-type ordering that previously used ``scanpy.tl.dendrogram`` is now computed internally and reproduces it exactly.
+
+- The streaming default layer is resolved from the modality: ``RNA``/``GA`` to ``log1p``, ``ATAC``/``tiles`` to ``tfidf``.
+
+- **Behaviour change:** ``remove_lowly_expressed`` now defaults to ``True`` on the AnnData path, matching the streaming variant. Pass ``remove_lowly_expressed=False`` to restore the previous behaviour.
+
+- **Behaviour change:** IQR normalisation is computed over all values per group, matching ``iqrLogNormalize``.
+
+
+**Release v1.0.4** (March 5, 2026)
+
+
+- Added ``plotMarkerStream`` for visualising marker gene specificity as a streamgraph.
+
+- Added ``expressed_min_num_cells_in_target_group`` (default 3), which floors the expression threshold at ``max(n_cells * expressed_pct, 3)`` so small clusters do not get an overly permissive cutoff.
+
+- Added input validation for ``groupby``, ``groups``, ``groups`` combined with ``batch_key``, and ``n_genes_user``.
+
+
 **Release v1.0.3** (March 11, 2025)
 
 
@@ -166,3 +204,82 @@ Citation
 If COSG is useful for your research, please consider citing `Dai et al. (2022)`_.
 
 .. _Dai et al. (2022): https://academic.oup.com/bib/advance-article-abstract/doi/10.1093/bib/bbab579/6511197?redirectedFrom=fulltext
+
+Execution modes
+---------------
+
+COSG runs the same algorithm in several modes, selected by the available
+hardware:
+
++------------------+----------+-----------+---------------------+
+| Mode             | Speedup  | Memory    | Requirements        |
++==================+==========+===========+=====================+
+| CPU chunked      | 1.8x     | ~19 GB    | Default, any system |
++------------------+----------+-----------+---------------------+
+| CPU legacy       | 1.0x     | ~38 GB    | cpu_chunk_size=0    |
++------------------+----------+-----------+---------------------+
+| GPU monolithic   | 6.7x     | 15 GB VRAM| 24+ GB GPU          |
++------------------+----------+-----------+---------------------+
+| GPU chunked      | 4.7x     | 0.9 GB    | Any GPU (4+ GB)     |
++------------------+----------+-----------+---------------------+
+
+Benchmarked on Allen Institute Human Neocortex (148K cells x 30K genes).
+
+All four modes read an in-memory ``AnnData``, so peak memory still scales with
+the size of the object. To keep memory bounded by the chunk size instead, read
+straight from a file — see `Cytome datasets`_.
+
+COSG does not modify the input ``adata.X``. It is safe to call
+``cosg.cosg()`` without copying ``adata`` first.
+
+Optional extras
+---------------
+
+``pip install cosg`` covers marker detection, ``plotMarkerDendrogram`` and
+``plotMarkerStream``. Two features need extras::
+
+    pip install 'cosg[dotplot]'   # plotMarkerDotplot (wraps scanpy.pl.dotplot)
+    pip install 'cosg[gpu]'       # the CuPy GPU path, device='gpu'
+
+scanpy was a hard dependency through 1.0.4. It is now optional because only
+``plotMarkerDotplot`` uses it, and requiring it cost every install ~60 MB and
+9 packages (statsmodels, seaborn, umap-learn, ...) for one plotting function.
+Calling ``plotMarkerDotplot`` without it raises an error naming the extra.
+
+Cytome datasets
+---------------
+
+Marker genes can be computed directly from a ``.cytome`` file, without loading
+the matrix into memory and without going through AnnData:
+
+.. code-block:: bash
+
+    pip install cytome
+
+.. code-block:: python
+
+    import cosg
+
+    markers = cosg.cosg(
+        "atlas.cytome",
+        groupby="cell_type",
+        modality="RNA",
+        layer="counts",
+        n_genes_user=50,
+    )
+
+``cosg.cosg()`` dispatches on its first argument. An ``AnnData`` takes the
+in-memory path and writes ``adata.uns[key_added]``; a path to a ``.cytome``
+file takes the streaming path, reads the file in chunks and returns a dict of
+``names``, ``scores`` and ``groups_order``. Peak memory is set by the chunk
+size, not by the number of cells.
+
+``layer=`` names a matrix stored in the file. Omit it and the default is
+resolved from the modality — ``RNA``/``GA`` to ``log1p``, ``ATAC``/``tiles``
+to ``tfidf`` — which normalizes on the fly and therefore also needs
+``pip install piaso``. Pass a stored layer, as above, to run with cosg and
+cytome alone. ``output_format=`` selects ``dict``, ``long`` or ``dense``.
+
+cytome is a single-file, SQLite-backed format that holds matrices, cell and
+feature metadata, embeddings and genomic fragments together:
+https://github.com/genecell/cytome

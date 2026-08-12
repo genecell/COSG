@@ -1,15 +1,99 @@
 from .cosg import indexByGene, iqrLogNormalize
 
-import scanpy as sc
+# scanpy is NOT imported at module level. Only `plotMarkerDotplot` needs it
+# (it wraps `sc.pl.dotplot`), so it is imported lazily there and declared as
+# the optional `cosg[dotplot]` extra. Importing it here would make scanpy —
+# and statsmodels, seaborn, umap-learn behind it — mandatory for everyone who
+# writes `import cosg`, including users who only compute markers.
+from anndata import AnnData
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import networkx as nx
 import matplotlib.colors as mcolors
-from scipy.cluster.hierarchy import linkage, fcluster
-from scipy.spatial.distance import pdist
+from scipy.cluster.hierarchy import linkage, fcluster, dendrogram as _sch_dendrogram
+from scipy.spatial.distance import pdist, squareform
 import matplotlib.patheffects as PathEffects
 from scipy.sparse import issparse
+
+
+def _require_scanpy(feature: str):
+    """Import scanpy on demand, with an error that says what to install."""
+    try:
+        import scanpy as sc
+    except ImportError as exc:  # pragma: no cover - exercised in a bare venv
+        raise ImportError(
+            f"{feature} needs scanpy, which is an optional dependency of COSG.\n"
+            "    pip install 'cosg[dotplot]'   (or: pip install scanpy)\n"
+            "Marker detection and the other plotting functions do not need it."
+        ) from exc
+    return sc
+
+
+def _dendrogram_order(
+    adata,
+    groupby,
+    use_rep,
+    *,
+    cor_method="pearson",
+    linkage_method="complete",
+    key_added=None,
+    inplace=True,
+):
+    """Order `groupby` categories by hierarchical clustering of `use_rep`.
+
+    A pandas/scipy reimplementation of ``scanpy.tl.dendrogram``, so that
+    ordering does not drag scanpy into the import path. Same algorithm:
+    per-category means of the representation, correlation between categories,
+    ``1 - corr`` as the distance, then the leaf order of the linkage.
+
+    The result is written to ``adata.uns[key_added]`` using scanpy's own key
+    names, so anything that *reads* that entry — including
+    ``sc.pl.dotplot(..., dendrogram=True)`` — keeps working unchanged.
+    """
+    if use_rep not in adata.obsm:
+        raise KeyError(
+            f"use_rep='{use_rep}' not found in adata.obsm "
+            f"(available: {list(adata.obsm)})"
+        )
+
+    categorical = adata.obs[groupby]
+    if not hasattr(categorical, "cat"):
+        categorical = categorical.astype("category")
+    categories = list(categorical.cat.categories)
+    if len(categories) < 2:
+        raise ValueError(
+            f"groupby='{groupby}' has {len(categories)} category; a dendrogram "
+            "needs at least 2."
+        )
+
+    rep_df = pd.DataFrame(np.asarray(adata.obsm[use_rep]), index=adata.obs_names)
+    mean_df = rep_df.groupby(categorical.values, observed=True).mean()
+    mean_df = mean_df.reindex(categories)
+
+    corr_matrix = mean_df.T.corr(method=cor_method).clip(-1, 1)
+    # squareform needs an exactly-zero diagonal; clip leaves 1.0 on it, but
+    # floating point can leave 1 - corr at ~1e-16 instead of 0.
+    dist = 1 - corr_matrix.values
+    np.fill_diagonal(dist, 0.0)
+    z_var = linkage(squareform(dist, checks=False), method=linkage_method)
+    dendro_info = _sch_dendrogram(z_var, labels=categories, no_plot=True)
+    categories_ordered = dendro_info["ivl"]
+
+    result = dict(
+        linkage=z_var,
+        groupby=[groupby],
+        use_rep=use_rep,
+        cor_method=cor_method,
+        linkage_method=linkage_method,
+        categories_ordered=categories_ordered,
+        categories_idx_ordered=[categories.index(c) for c in categories_ordered],
+        dendrogram_info=dendro_info,
+        correlation_matrix=corr_matrix.values,
+    )
+    if inplace:
+        adata.uns[key_added or f"dendrogram_{groupby}"] = result
+    return result
 
 
 ## Helper function
@@ -130,7 +214,7 @@ import matplotlib.path as mpath
 import matplotlib.patches as mpatches
 
 def plotMarkerDendrogram(
-    adata: sc.AnnData,
+    adata: AnnData,
     group_by: str,
     use_rep: str = 'X_pca',
     calculate_dendrogram_on_cosg_scores: bool = True,
@@ -936,7 +1020,7 @@ def plotMarkerDendrogram(
 ### packaged dotplot function in COSG
 
 def plotMarkerDotplot(
-    adata: sc.AnnData,
+    adata: AnnData,
     groupby: str,
     top_n_genes: int = 3,
     use_rep: str = 'X_pca',
@@ -954,6 +1038,13 @@ def plotMarkerDotplot(
     The function computes the cell cluster ordering using a dendrogram (if `use_rep` is provided)
     or derives it from `adata.obs[groupby]`, extracts the top marker genes identified by COSG, 
     and plots a dotplot using Scanpy's `sc.pl.dotplot`.
+
+    Requires scanpy, which is an optional dependency of COSG::
+
+        pip install 'cosg[dotplot]'
+
+    It is the only function in COSG that needs it. `plotMarkerDendrogram` and
+    `plotMarkerStream` do not.
 
     Parameters
     ----------
@@ -1043,12 +1134,7 @@ def plotMarkerDotplot(
     # Compute dendrogram or derive ordering based on use_rep
     if use_rep is not None:
         # Temporarily suppress scanpy verbosity
-        original_verbosity = sc.settings.verbosity
-        sc.settings.verbosity = 0  # Suppress messages
-        try:
-            sc.tl.dendrogram(adata, groupby=groupby, use_rep=use_rep)
-        finally:
-            sc.settings.verbosity = original_verbosity  # Restore original verbosity
+        _dendrogram_order(adata, groupby=groupby, use_rep=use_rep)
 
 
         if dendro_key not in adata.uns or 'categories_ordered' not in adata.uns[dendro_key]:
@@ -1089,9 +1175,12 @@ def plotMarkerDotplot(
     marker_genes_list = {idx: list(row.values) for idx, row in df_tmp.iterrows()}
     marker_genes_list = {k: v for k, v in marker_genes_list.items() if not any(isinstance(x, float) for x in v)}
 
-    # Enable dendrogram only if use_rep is provided
-    use_dendrogram = use_rep is not None  
+    # Enable dendrogram only if use_rep is provided. When it is, the ordering
+    # above already wrote adata.uns['dendrogram_<groupby>'] in scanpy's own
+    # layout, so sc.pl.dotplot reads it rather than recomputing.
+    use_dendrogram = use_rep is not None
     # Generate and display the dot plot with the provided parameters.
+    sc = _require_scanpy("plotMarkerDotplot")
     sc.pl.dotplot(
         adata,
         marker_genes_list,
@@ -1317,9 +1406,8 @@ def _resolve_celltype_order(adata, cosg_score_df, groupby, celltype_order, use_d
                 Z = linkage(D, method=linkage_method)
                 ordering = [cosg_score_df.columns[i] for i in leaves_list(Z)]
         else:
-            sc.settings.verbosity = 0
-            sc.tl.dendrogram(adata, groupby=groupby, use_rep=use_rep)
-            ordering = list(adata.uns[f'dendrogram_{groupby}']['categories_ordered'])
+            info = _dendrogram_order(adata, groupby=groupby, use_rep=use_rep)
+            ordering = list(info['categories_ordered'])
     else:
         ordering = list(adata.obs[groupby].cat.categories) if hasattr(adata.obs[groupby], 'cat') else list(cosg_score_df.columns)
     
@@ -1728,7 +1816,7 @@ def _setup_legend(ax, fig, ordering, colors, legend_mode, legend_loc, legend_nco
 
 
 def plotMarkerStream(
-    adata: sc.AnnData,
+    adata: AnnData,
     groupby: str,
     cosg_scores: Optional[pd.DataFrame] = None,
     cosg_key: str = 'cosg',
