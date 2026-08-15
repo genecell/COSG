@@ -19,6 +19,8 @@ import pandas as pd
 import pytest
 import scipy.sparse as sp
 
+from conftest import requires_cytome, requires_piaso
+
 
 # --------------------------------------------------------------------
 # Shared fixture — small RNA cytome with deterministic per-group pattern.
@@ -86,6 +88,8 @@ def test_cosg_anndata_input_returns_none_and_mutates_uns():
 # Cytome path — str / Path / Dataset
 # --------------------------------------------------------------------
 
+@requires_cytome
+@requires_piaso
 def test_cosg_cytome_path_str_dispatches_to_cytome_streaming(tmp_path):
     """First-arg string → routes to run_cosg_cytome. Returns a dict
     (NOT None), and the dict shape matches the direct cytome call."""
@@ -114,6 +118,8 @@ def test_cosg_cytome_path_str_dispatches_to_cytome_streaming(tmp_path):
     )
 
 
+@requires_cytome
+@requires_piaso
 def test_cosg_cytome_path_pathlib_dispatches(tmp_path):
     """First-arg pathlib.Path also routes via _is_cytome_input."""
     from pathlib import Path
@@ -131,6 +137,8 @@ def test_cosg_cytome_path_pathlib_dispatches(tmp_path):
     assert "names" in result
 
 
+@requires_cytome
+@requires_piaso
 def test_cosg_cytome_dataset_object_dispatches(tmp_path):
     """First-arg open cytome Dataset routes to the cytome path. Critical
     for interactive use where the user has an open Dataset already."""
@@ -155,6 +163,8 @@ def test_cosg_cytome_dataset_object_dispatches(tmp_path):
         open_ds.close()
 
 
+@requires_cytome
+@requires_piaso
 def test_cosg_cytome_dataset_not_closed_by_dispatch(tmp_path):
     """Pin lifecycle ownership — passing an open Dataset and using it
     again after cosg.cosg must work."""
@@ -178,6 +188,8 @@ def test_cosg_cytome_dataset_not_closed_by_dispatch(tmp_path):
 # device= dispatch on the cytome path
 # --------------------------------------------------------------------
 
+@requires_cytome
+@requires_piaso
 def test_run_cosg_cytome_device_cpu_default(tmp_path):
     """device='cpu' (default) hits the existing CPU path. Sanity that
     the new device= kwarg didn't break the default."""
@@ -191,6 +203,8 @@ def test_run_cosg_cytome_device_cpu_default(tmp_path):
     assert "names" in result
 
 
+@requires_cytome
+@requires_piaso
 def test_run_cosg_cytome_device_auto_resolves(tmp_path):
     """device='auto' resolves via _backend.get_device — picks GPU when
     CuPy available, else CPU. We just assert it RUNS (whichever path
@@ -205,6 +219,7 @@ def test_run_cosg_cytome_device_auto_resolves(tmp_path):
     assert "names" in result
 
 
+@requires_cytome
 def test_run_cosg_cytome_device_gpu_with_sparse_output_raises(tmp_path):
     """device='gpu' + output_format != 'ndarray' is unsupported. The
     function must raise NotImplementedError BEFORE doing any work,
@@ -226,6 +241,7 @@ def test_run_cosg_cytome_device_gpu_with_sparse_output_raises(tmp_path):
     assert "ndarray" in str(exc.value)
 
 
+@requires_cytome
 def test_run_cosg_cytome_gpu_shim_delegates(tmp_path):
     """The pre-Round-8 run_cosg_cytome_gpu function is now a thin shim
     around run_cosg_cytome(..., device='gpu'). Verify it still
@@ -274,6 +290,7 @@ def test_cosg_anndata_with_cytome_kwarg_output_format_raises():
     assert "output_format" in str(exc.value)
 
 
+@requires_cytome
 def test_cosg_cytome_with_anndata_kwarg_key_added_raises(tmp_path):
     """AnnData-only kwarg `key_added=` on a cytome input → TypeError
     naming the offending kwarg."""
@@ -290,6 +307,7 @@ def test_cosg_cytome_with_anndata_kwarg_key_added_raises(tmp_path):
     assert "anndata-only" in msg.lower() or "cytome" in msg.lower()
 
 
+@requires_cytome
 def test_cosg_cytome_with_anndata_kwarg_copy_raises(tmp_path):
     """AnnData-only kwarg `copy=True` on a cytome input → TypeError."""
     import cosg

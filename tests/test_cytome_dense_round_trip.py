@@ -26,6 +26,12 @@ import pandas as pd
 import pytest
 import scipy.sparse as sp
 
+pytest.importorskip(
+    "cytome",
+    reason="cytome not installed — this whole module tests the .cytome "
+           "streaming backend (pip install -e '.[dev]')",
+)
+
 
 # Local-only fixture: a real MTG subset that is not distributed with the
 # package. Point COSG_TEST_MTG_H5AD at your own .h5ad to run this comparison;

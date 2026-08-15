@@ -15,7 +15,28 @@ import numpy as np
 import time
 from scipy import sparse as sp_sparse
 
-import cytome
+
+# cytome is an optional dependency, imported inside the functions that use it:
+# `import cosg` should neither require it nor pay to load a dataset engine for
+# the AnnData path, which is most of COSG's use. Previously this was a
+# module-level import guarded by a try/except in __init__.py, which meant a
+# missing cytome made run_cosg_cytome silently *disappear* -- the caller got
+# `AttributeError: module 'cosg' has no attribute 'run_cosg_cytome'`, which
+# reads like a typo rather than a missing package.
+
+
+def _cytome():
+    """Import and return the cytome package."""
+    try:
+        import cytome
+    except ImportError as exc:  # pragma: no cover - only on a broken install
+        raise ImportError(
+            "Reading a .cytome dataset needs cytome, which is an optional "
+            "dependency of COSG.\n"
+            "    pip install 'cosg[cytome]'   (or: pip install cytome)\n"
+            "Marker detection on an AnnData does not need it."
+        ) from exc
+    return cytome
 
 
 # Lazily resolved at first call — cytome's Dataset class isn't re-exported
@@ -38,7 +59,7 @@ def _cytome_dataset_classes():
     except ImportError:
         pass
     # Also accept any future ``cytome.Dataset`` alias if/when added.
-    cytome_Dataset = getattr(cytome, "Dataset", None)
+    cytome_Dataset = getattr(_cytome(), "Dataset", None)
     if cytome_Dataset is not None and cytome_Dataset not in candidates:
         candidates.append(cytome_Dataset)
     result = tuple(candidates)
@@ -66,7 +87,7 @@ def _open_or_use(cytome_path):
     """
     if _is_cytome_dataset(cytome_path):
         return cytome_path, False
-    return cytome.open(cytome_path), True
+    return _cytome().open(cytome_path), True
 
 
 def _emit_filter_log(tag, *, remove_lowly_expressed, expressed_pct,
@@ -282,7 +303,7 @@ def _get_all_feature_names(ds, modality, feature_name_col=None):
     so gene-name resolution is consistent with how features are named in
     the dict / long outputs.
     """
-    from cytome.utils.modality import modality_feature_table_info
+    from cytome import modality_feature_table_info
     feature_table, idx_col, name_col = modality_feature_table_info(ds, modality, feature_name_col)
     rows = ds._conn.execute(
         f'SELECT "{name_col}" FROM {feature_table} ORDER BY {idx_col}'
@@ -329,10 +350,10 @@ def _get_labels_and_gene_names(ds, groupby, cell_mask=None, modality="RNA", load
     When load_gene_names=False, gene_names is returned as None (lazy loading).
 
     Modality dispatch (RNA/GA/ATAC/tiles) is delegated to
-    ``cytome.utils.modality.modality_feature_table_info`` — single source
+    ``cytome.modality_feature_table_info`` — single source
     of truth shared with cytome.io and piaso plotting.
     """
-    from cytome.utils.modality import modality_feature_table_info
+    from cytome import modality_feature_table_info
 
     # Read group labels from SQLite cells table
     rows = ds._conn.execute(
@@ -435,11 +456,11 @@ def _build_group_mapping(labels, categories=None):
 def _get_feature_table_info(ds, modality, feature_name_col=None):
     """Return (feature_table, idx_col, name_col) for a given modality.
 
-    Thin wrapper over ``cytome.utils.modality.modality_feature_table_info``
+    Thin wrapper over ``cytome.modality_feature_table_info``
     so this and ``_get_labels_and_gene_names`` use the single canonical
     registry. Closes the GA-modality silent-fall-through bug.
     """
-    from cytome.utils.modality import modality_feature_table_info
+    from cytome import modality_feature_table_info
     return modality_feature_table_info(ds, modality, feature_name_col)
 
 
@@ -453,6 +474,20 @@ _AUTO_LAYER_BY_MODALITY = {
     "ATAC": "tfidf",
     "tiles": "tfidf",
 }
+
+#: Layers COSG can compute on the fly. Each needs a piaso normalizer and has a
+#: branch in _resolve_chunk_normalizer; 'counts' is handled before this, since
+#: it needs no transform at all.
+_ON_THE_FLY_LAYERS = ("log1p", "infog", "tfidf")
+
+
+def _unknown_layer_message(layer):
+    return (
+        f"Unknown layer='{layer}'. Known: "
+        f"'counts' | 'log1p' | 'infog' | 'tfidf' (or any layer name "
+        f"already materialised in the cytome — pass compute_on_fly=False "
+        f"and matching layer to read it directly)."
+    )
 
 
 def _resolve_auto_layer(layer, modality):
@@ -478,17 +513,19 @@ def _resolve_auto_layer(layer, modality):
 def _resolve_chunk_normalizer(layer, ds, modality, use_cached_stats):
     """Return a per-chunk normalizer callable, or ``None`` for raw counts.
 
-    Lazy-imports piaso normalizers (only for the non-``counts`` layers,
-    at call time) so that:
+    ``counts`` needs no transform and ``log1p`` is implemented natively in
+    :mod:`cosg._normalize`, so **neither touches PIASO** -- including the
+    public default, which is ``log1p`` for RNA. That matters because PIASO
+    requires ``cosg>=1.0.3``: when COSG's default path imported PIASO back,
+    the two were mutually dependent in practice, and COSG's headline streaming
+    feature could not be exercised without installing the package that depends
+    on COSG.
 
-    1. The ``layer='counts'`` path has zero piaso dependency — ``import
-       cosg`` keeps working without piaso installed. NOTE the public
-       default is now ``'log1p'`` (RNA-oriented), so a *default*
-       ``run_cosg_cytome`` call *does* import piaso at call time — that is
-       intentional; only ``import cosg`` at module load stays piaso-free.
-    2. The structural import-order risk in piaso/__init__.py (which
-       eagerly `import cosg`s in ``_runGDR.py:13``) is sidestepped — by
-       the time this function fires, piaso is fully loaded.
+    ``infog`` and ``tfidf`` do lazy-import PIASO, which is correct -- they are
+    PIASO normalizations, and asking for one means you want PIASO. Deferring
+    to call time also sidesteps the import-order risk in ``piaso/__init__.py``
+    (which eagerly imports cosg in ``_runGDR.py:13``): by the time this
+    function fires, PIASO is fully loaded.
 
     Supported on-the-fly layers: ``log1p``, ``infog``, ``tfidf``.
     Materialised non-counts layers (e.g. ``RNA_infog`` already on disk)
@@ -514,19 +551,32 @@ def _resolve_chunk_normalizer(layer, ds, modality, use_cached_stats):
     if layer == "counts":
         return None
 
+    # Reject an unrecognised layer BEFORE trying to import piaso. Otherwise a
+    # typo'd layer name on a machine without piaso reports "needs piaso for
+    # on-the-fly 'totaly_made_up' normalization" — telling the user to install
+    # a package that could never have provided that layer.
+    if layer not in _ON_THE_FLY_LAYERS:
+        raise ValueError(_unknown_layer_message(layer))
+
     # Every non-'counts' layer needs a piaso normalizer. Import piaso lazily
     # (only here, at call time) so `import cosg` stays piaso-free; if piaso is
     # absent, raise a clear, actionable error instead of a bare ImportError on
     # a deep submodule path.
-    try:
-        import piaso  # noqa: F401
-    except ImportError as exc:  # pragma: no cover - exercised only w/o piaso
-        raise ImportError(
-            f"cosg.run_cosg_cytome(layer='{layer}') needs piaso for on-the-fly "
-            f"'{layer}' normalization. Install and import it "
-            f"(`pip install piaso` then `import piaso`), or pass layer='counts' "
-            f"for the raw-counts path that requires no piaso."
-        ) from exc
+    # Only infog and tfidf need PIASO -- they are PIASO methods. log1p is
+    # handled natively (cosg/_normalize.py) so the *default* call has no PIASO
+    # dependency; PIASO requires cosg, and having COSG's default path require
+    # PIASO back made the two mutually dependent in practice.
+    if layer in ("infog", "tfidf"):
+        try:
+            import piaso  # noqa: F401
+        except ImportError as exc:  # pragma: no cover - exercised only w/o piaso
+            raise ImportError(
+                f"cosg.run_cosg_cytome(layer='{layer}') needs PIASO: "
+                f"'{layer}' is a PIASO normalization.\n"
+                f"    pip install piaso-tools\n"
+                f"(the distribution is `piaso-tools`; the import is `piaso`.) "
+                f"layer='log1p' and layer='counts' need no PIASO."
+            ) from exc
 
     if layer == "infog":
         # piaso.tools._normalization is loaded eagerly by piaso/_runGDR.py:13
@@ -572,13 +622,15 @@ def _resolve_chunk_normalizer(layer, ds, modality, use_cached_stats):
         )
 
     if layer == "log1p":
-        from cytome.utils.modality import modality_cell_depth
-        from piaso.preprocessing._normalize_log1p import _normalize_chunk_log1p
+        from cytome import modality_cell_depth
+
+        from ._normalize import normalize_chunk_log1p as _normalize_chunk_log1p
         cell_depth = modality_cell_depth(
             ds, modality, use_cached_stats=use_cached_stats,
         )
-        # log1p scale: prefer a cached one (set by piaso.pp.normalize_log1p
-        # at write-back time); else fall back to scanpy's 1e4 default.
+        # Scale: prefer one cached on the file (piaso.pp.normalize_log1p
+        # records it at write-back time, so a COSG run matches whatever PIASO
+        # already wrote); else the conventional 1e4.
         scale = 1e4
         params = ds.metadata.get(f"{modality}_log1p_params")
         if params is not None:
@@ -587,11 +639,12 @@ def _resolve_chunk_normalizer(layer, ds, modality, use_cached_stats):
             chunk, cell_depth[indices], scale,
         )
 
-    raise ValueError(
-        f"Unknown layer='{layer}'. Known: "
-        f"'counts' | 'log1p' | 'infog' | 'tfidf' (or any layer name "
-        f"already materialised in the cytome — pass compute_on_fly=False "
-        f"and matching layer to read it directly)."
+    # Unreachable: the layer was validated against _ON_THE_FLY_LAYERS above,
+    # and every member has a branch. Kept as a guard so adding a name to that
+    # tuple without a branch fails loudly rather than returning None (which
+    # the caller would read as "raw counts, no transform").
+    raise AssertionError(
+        f"layer='{layer}' is in _ON_THE_FLY_LAYERS but has no normalizer branch"
     )
 
 
@@ -1133,7 +1186,7 @@ def run_cosg_cytome(
             if _mn == f"{modality}_counts":
                 break  # prefer the counts matrix as the reference
     if _mat_cols is not None and _mat_cols != n_genes:
-        from cytome.utils.modality import modality_feature_table_info
+        from cytome import modality_feature_table_info
         _ftab, _idxc, _ = modality_feature_table_info(ds, modality, feature_name_col)
         raise ValueError(
             f"COSG: modality '{modality}' feature table '{_ftab}' has "

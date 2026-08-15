@@ -22,6 +22,14 @@ from __future__ import annotations
 
 import pytest
 
+from conftest import requires_piaso
+
+pytest.importorskip(
+    "cytome",
+    reason="cytome not installed — this whole module tests the .cytome "
+           "streaming backend (pip install -e '.[dev]')",
+)
+
 
 def _stub_cytome_path(tmp_path):
     """We don't actually need a real cytome — argument validation runs
@@ -160,6 +168,7 @@ def test_run_cosg_cytome_cpu_deep_import_also_raises(tmp_path):
     assert "renamed" in msg.lower() and "run_cosg_cytome" in msg
 
 
+@requires_piaso
 def test_run_cosg_cytome_new_name_is_callable_default_cpu(tmp_path):
     """Sanity: the new name actually works — opening a tiny cytome and
     running with defaults produces a result. This pins the rename

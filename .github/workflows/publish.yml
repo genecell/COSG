@@ -36,12 +36,36 @@ jobs:
 
       # A PyPI version can never be re-uploaded, so everything that can fail
       # should fail before the upload step, not after it.
+      # `.[dev]` and not `.`: the suite covers two optional features — the
+      # cytome streaming backend and the scanpy dotplot — whose tests skip
+      # when the dependency is absent. Installing only the core would let a
+      # release go out with the streaming backend never executed.
       - name: Install and test
         run: |
           python -m pip install --upgrade pip
-          python -m pip install -e .
-          python -m pip install pytest
-          python -m pytest tests/ -q
+          python -m pip install -e ".[dev]"
+
+      # Skips are the right behaviour for a contributor, the wrong behaviour
+      # for a release. Assert the optional deps are actually present, so a
+      # broken extra fails here instead of quietly shrinking the test run.
+      - name: Optional dependencies must be installed for the release run
+        run: |
+          python - <<'PY'
+          import importlib
+          for mod, extra in (("cytome", "dev"), ("scanpy", "dev/dotplot")):
+              try:
+                  importlib.import_module(mod)
+              except ImportError as exc:
+                  raise SystemExit(
+                      f"::error::{mod} is not importable, so its tests would "
+                      f"SKIP rather than run. Check the '{extra}' extra in "
+                      f"pyproject.toml. ({exc})"
+                  )
+          print("cytome and scanpy present — the full suite will run")
+          PY
+
+      - name: Run tests
+        run: python -m pytest tests/ -q
 
       - name: Build sdist + wheel
         run: |

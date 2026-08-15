@@ -34,20 +34,20 @@ from .cosg import cosg, indexByGene, iqrLogNormalize
 from ._backend import HAS_CUPY
 from ._backend import HAS_CUPY as _HAS_GPU
 
-# Cytome-streaming variants — bounded-RAM marker calls reading directly
-# from a .cytome file. Importing here is safe even when cytome / piaso
-# aren't installed: _cytome_streaming has a top-level `import cytome`
-# but the piaso normalizers are lazy-imported inside _resolve_chunk_normalizer.
-try:
-    from ._cytome_streaming import (
-        run_cosg_cytome,            # Round 9: canonical name
-        run_cosg_cytome_cpu,        # Round 9: K-HARD migration stub
-        run_cosg_cytome_gpu,        # shim → run_cosg_cytome(device='gpu')
-    )
-except ImportError:
-    # cytome not installed — cytome-streaming variants unavailable, but
-    # the AnnData path still works.
-    pass
+# Cytome-streaming variants — bounded-RAM marker calls reading directly from a
+# .cytome file. Imported unconditionally: cytome is a required dependency, and
+# _cytome_streaming no longer imports it at module scope, so this costs nothing
+# at import time.
+#
+# This used to sit in a try/except. That made a missing cytome delete the names
+# rather than explain itself -- callers got `AttributeError: module 'cosg' has
+# no attribute 'run_cosg_cytome'`, which reads like a typo. Now the functions
+# always exist and raise an ImportError naming the package if it is absent.
+from ._cytome_streaming import (
+    run_cosg_cytome,            # Round 9: canonical name
+    run_cosg_cytome_cpu,        # Round 9: K-HARD migration stub
+    run_cosg_cytome_gpu,        # shim → run_cosg_cytome(device='gpu')
+)
 
 try:
     from ._plotting import plotMarkerDendrogram, plotMarkerDotplot, plotMarkerStream

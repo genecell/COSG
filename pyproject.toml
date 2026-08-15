@@ -72,10 +72,23 @@ gpu = [
 dotplot = [
     "scanpy>=1.6.0"
 ]
+# Same rule as scanpy above, applied consistently: the cytome streaming
+# backend is one optional path, so a plain `pip install cosg` should not carry
+# it. cosg.cosg() on a .cytome path raises an ImportError naming this extra.
+# Upper bound because cytome pins its public API with a conformance test, so
+# 0.x minors are safe; the bound only stops a future 1.0 cleanup reaching
+# installs pinned to this release.
+cytome = [
+    "cytome>=0.2.3,<1.0"
+]
 dev = [
     "pre-commit",
     "pytest",
-    "scanpy>=1.6.0",  # so the full suite, including the dotplot path, runs
+    # Both optional features must be installed for the suite, or CI green means
+    # very little: the dotplot and cytome-streaming tests would silently skip
+    # (see tests/conftest.py) and a release could ship an untested backend.
+    "scanpy>=1.6.0",
+    "cytome>=0.2.3,<1.0",
 ]
 
 [tool.hatch.build.targets.wheel]

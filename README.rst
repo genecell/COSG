@@ -74,6 +74,10 @@ Release notes
 
 - Added a **streaming backend for** ``.cytome`` **datasets**: marker detection reads the file in chunks, so peak memory does not scale with the number of cells.
 
+- The cytome streaming backend is an **optional extra**, on the same reasoning as scanpy above: ``pip install 'cosg[cytome]'``. Calling ``cosg.cosg()`` on a ``.cytome`` path without it raises an error naming the extra rather than failing obscurely.
+
+- **The default streaming path no longer needs PIASO.** ``layer='log1p'`` (the RNA default) is computed by COSG itself and gives identical numbers to the implementation it replaced. Only ``layer='infog'`` and ``layer='tfidf'`` need PIASO, since those are PIASO normalizations; the error naming it now gives the correct install command, ``pip install piaso-tools``.
+
 - Added a **GPU path** (CuPy), selected with ``device='cpu' | 'gpu' | 'auto'`` on both the in-memory and streaming paths.
 
 - ``cosg.cosg()`` is now a **single polymorphic entry point**. It dispatches on its first argument:

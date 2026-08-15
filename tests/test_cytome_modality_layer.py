@@ -21,7 +21,15 @@ import sys
 import numpy as np
 import pandas as pd
 import pytest
+
+from conftest import requires_piaso
 import scipy.sparse as sp
+
+pytest.importorskip(
+    "cytome",
+    reason="cytome not installed — this whole module tests the .cytome "
+           "streaming backend (pip install -e '.[dev]')",
+)
 
 
 def _build_multimodal_cytome(path, n_cells=20, seed=0):
@@ -101,6 +109,7 @@ def test_get_labels_and_gene_names_ga_returns_GA_gene_names(tmp_path):
     ds.close()
 
 
+@requires_piaso
 def test_run_cosg_cytome_ga_modality_picks_GA_markers(tmp_path):
     """End-to-end on GA modality: COSG should rank Olig2 highly for g2,
     Nestin for g0, Tubb3 for g1 (per the deterministic GA_counts pattern).
@@ -131,6 +140,7 @@ def test_run_cosg_cytome_ga_modality_picks_GA_markers(tmp_path):
 # Layer support — counts default + materialized + on-the-fly
 # -----------------------------------------------------------------------
 
+@requires_piaso
 def test_run_cosg_cytome_default_layer_is_counts(tmp_path):
     """Backward compat: default layer='counts' produces same
     markers as before."""
@@ -251,3 +261,45 @@ def test_run_cosg_cytome_gpu_signature_has_new_kwargs():
     assert sig.parameters["layer"].default == "auto"
     assert sig.parameters["compute_on_fly"].default is True
     assert sig.parameters["use_cached_stats"].default is True
+
+
+def test_unknown_layer_is_rejected_before_the_piaso_import(monkeypatch):
+    """A typo'd layer must raise ValueError, not "go install piaso".
+
+    _resolve_chunk_normalizer used to `import piaso` before validating the
+    layer name, so on a machine without piaso a typo produced
+    "needs piaso for on-the-fly 'totaly_made_up' normalization" — advising the
+    user to install a package that could never have supplied that layer. CI
+    surfaced it: the release environment has cytome but not piaso.
+
+    Validation now happens first, so this holds with or without piaso; the
+    monkeypatch makes the test meaningful in a dev env where piaso is present.
+    """
+    import builtins
+
+    from cosg._cytome_streaming import _resolve_chunk_normalizer
+
+    real_import = builtins.__import__
+
+    def no_piaso(name, *args, **kwargs):
+        if name == "piaso" or name.startswith("piaso."):
+            raise ImportError("No module named 'piaso'")
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", no_piaso)
+
+    # ds is never touched: the layer name is rejected before any dataset access.
+    with pytest.raises(ValueError, match="Unknown layer"):
+        _resolve_chunk_normalizer(
+            "totaly_made_up", ds=None, modality="RNA", use_cached_stats=False,
+        )
+
+    # ...and a layer that genuinely is a PIASO normalization still says so.
+    # log1p is deliberately NOT in this list any more: COSG computes it
+    # natively (cosg/_normalize.py), so the default path no longer depends on
+    # the package that depends on COSG.
+    for piaso_layer in ("infog", "tfidf"):
+        with pytest.raises(ImportError, match="piaso-tools"):
+            _resolve_chunk_normalizer(
+                piaso_layer, ds=None, modality="RNA", use_cached_stats=False,
+            )
