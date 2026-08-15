@@ -69,6 +69,11 @@ Development version:
 Release notes
 -------------
 
+**Release v1.1.1** (August 15, 2026)
+
+- Fixed the PyPI project page, which showed a single sentence instead of this README. The ``readme`` field pointed at an inline string rather than at ``README.rst``, so the long description was never packaged. Code is identical to v1.1.0.
+
+
 **Release v1.1.0** (August 12, 2026)
 
 

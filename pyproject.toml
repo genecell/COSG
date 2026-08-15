@@ -4,7 +4,7 @@ requires = ["hatchling"]
 
 [project]
 name = "cosg"
-version = "1.1.0"
+version = "1.1.1"
 description = "Accurate and fast cell marker gene identification with COSG (with optional GPU acceleration)"
 requires-python = ">=3.6"
 license = { text = "BSD-3-Clause" }
@@ -14,7 +14,10 @@ authors = [
 maintainers = [
     { name = "Min Dai", email = "dai@broadinstitute.org" }
 ]
-readme = {text = "COSG: Accurate and fast cell marker gene identification", content-type = "text/plain"}
+# Point at the file, not an inline string. A `{text = ...}` literal here makes
+# the PyPI project page show only that one sentence -- README.rst is never
+# read. hatchling infers content-type text/x-rst from the extension.
+readme = "README.rst"
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Environment :: Console",

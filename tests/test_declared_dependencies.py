@@ -109,3 +109,29 @@ def test_plotting_api_is_actually_exported():
             "import. Check that cosg/_plotting.py is present and that its "
             "module-level imports (scanpy, networkx, matplotlib) are declared."
         )
+
+
+def test_readme_points_at_a_file_not_an_inline_string():
+    """The PyPI project page comes from `readme`; an inline string blanks it.
+
+    v1.1.0 shipped with
+
+        readme = {text = "COSG: ...", content-type = "text/plain"}
+
+    so pypi.org/project/cosg showed that one sentence and never rendered
+    README.rst. The packaged metadata is what users see, and it is not visible
+    from a source checkout -- nothing in the repo looks wrong.
+    """
+    import pathlib
+    import re
+
+    pyproject = pathlib.Path(__file__).resolve().parent.parent / "pyproject.toml"
+    m = re.search(r"^readme\s*=\s*(.+)$", pyproject.read_text(), re.M)
+    assert m, "no readme field in pyproject.toml -- the PyPI page will be empty"
+    value = m.group(1).strip()
+    assert not value.startswith("{"), (
+        f"readme is an inline table ({value}); point it at the README file so "
+        "the long description is packaged."
+    )
+    name = value.strip('"').strip("'")
+    assert (pyproject.parent / name).is_file(), f"readme file {name!r} not found"
