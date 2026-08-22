@@ -59,7 +59,10 @@ def _cytome_dataset_classes():
     except ImportError:
         pass
     # Also accept any future ``cytome.Dataset`` alias if/when added.
-    cytome_Dataset = getattr(_cytome(), "Dataset", None)
+    try:
+        cytome_Dataset = getattr(_cytome(), "Dataset", None)
+    except ImportError:
+        cytome_Dataset = None
     if cytome_Dataset is not None and cytome_Dataset not in candidates:
         candidates.append(cytome_Dataset)
     result = tuple(candidates)

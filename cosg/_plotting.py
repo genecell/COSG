@@ -1431,7 +1431,7 @@ def _resolve_colors(adata, groupby, ordering, celltype_colors, cmap, gene_dict):
     
     missing = [ct for ct in ordering if ct not in colors]
     if missing:
-        cmap_obj = plt.cm.get_cmap(cmap)
+        cmap_obj = plt.get_cmap(cmap)
         for i, ct in enumerate(missing):
             colors[ct] = cmap_obj(i / max(1, len(missing) - 1))
     
