@@ -55,9 +55,17 @@ def test_auto_refuses_to_normalise_twice(tmp_path):
     p = _write(_adata(normalised=True), tmp_path, "norm.cytome")
     ds = cytome.open(p)
     try:
-        with pytest.warns(UserWarning, match="twice|already normalised"):
+        with pytest.warns(UserWarning):
             resolved = _resolve_auto_layer("auto", "RNA", ds=ds)
-        assert resolved == "counts", resolved
+        # Never log1p. Which layer it lands on depends on the writer:
+        # cytome < 0.3.0 stored the normalised matrix as RNA_counts, so the
+        # probe catches it there; >= 0.3.0 does not write RNA_counts at all,
+        # and auto falls back to whatever adata.X was.
+        assert resolved != "log1p", resolved
+        if ds.matrix_meta("RNA_counts") is not None:
+            assert resolved == "counts", resolved
+        else:
+            assert ds.matrix_meta(f"RNA_{resolved}") is not None, resolved
     finally:
         ds.close()
 
@@ -124,8 +132,93 @@ def test_the_probe_reads_the_matrix_out_of_the_chunk_tuple(tmp_path):
 
     ds = cytome.open(build("norm.cytome", True))
     try:
-        # the verdict must be False, not None: None means the probe gave up,
-        # which is how the bug hid
+        # cytome >= 0.3.0 does not write RNA_counts for a normalized matrix,
+        # so there is nothing to probe -- None is correct there. On older
+        # files the probe must still reach a verdict rather than give up,
+        # which is how the bug hid.
+        verdict = _stored_matrix_is_integer(ds, "RNA")
+        has_counts = ds.matrix_meta("RNA_counts") is not None
+        assert verdict is (False if has_counts else None), (verdict, has_counts)
+    finally:
+        ds.close()
+
+
+def test_recorded_is_integer_is_preferred_over_probing(tmp_path, monkeypatch):
+    """cytome >= 0.3.0 records `is_integer` at write time; use it.
+
+    The probe exists for older files. When the writer already recorded the
+    answer, re-deriving it is wasted work and one more place to get wrong --
+    this probe was dead code once precisely because every consumer had to
+    implement it.
+    """
+    import numpy as np
+    import pytest
+    import scipy.sparse as sp
+
+    anndata = pytest.importorskip("anndata")
+    cytome = pytest.importorskip("cytome")
+    from cosg._cytome_streaming import _stored_matrix_is_integer
+
+    rs = np.random.RandomState(0)
+    a = anndata.AnnData(X=sp.csr_matrix(rs.poisson(3.0, (40, 10)).astype(np.float32)))
+    a.var_names = [f"g{i}" for i in range(10)]
+    p = str(tmp_path / "r.cytome")
+    cytome.from_anndata(a, output=p).close()
+
+    ds = cytome.open(p)
+    try:
+        meta = ds.matrix_meta("RNA_counts")
+        if meta is None or meta.get("is_integer") is None:
+            pytest.skip("cytome older than 0.3.0 does not record is_integer")
+        # make the probe path fail loudly: if it is used, the test errors
+        monkeypatch.setattr(ds, "iter_chunks",
+                            lambda *a, **k: (_ for _ in ()).throw(
+                                AssertionError("probed despite a recorded flag")))
+        assert _stored_matrix_is_integer(ds, "RNA") is True
+    finally:
+        ds.close()
+
+
+def test_is_integer_from_matrix_meta_is_preferred_over_the_probe(tmp_path):
+    """cytome >= 0.3.0 records the answer at write time; use it.
+
+    Re-deriving a fact the writer already knew is how the probe in this module
+    shipped as dead code -- it read `.data` off a `(matrix, row_indices)`
+    tuple, answered "cannot tell" for every chunk, and the guard it feeds
+    never fired while looking correct.
+    """
+    import sqlite3
+
+    import numpy as np
+    import pytest
+    import scipy.sparse as sp
+
+    anndata = pytest.importorskip("anndata")
+    cytome = pytest.importorskip("cytome")
+    from cosg._cytome_streaming import _stored_matrix_is_integer
+
+    rs = np.random.RandomState(0)
+    a = anndata.AnnData(
+        X=sp.csr_matrix(rs.poisson(2.0, (80, 20)).astype(np.float32)))
+    a.var_names = [f"g{i}" for i in range(20)]
+    p = str(tmp_path / "raw.cytome")
+    cytome.from_anndata(a, output=p).close()
+
+    con = sqlite3.connect(p)
+    try:
+        cols = [r[1] for r in con.execute("PRAGMA table_info(matrix_meta)")]
+        if "is_integer" not in cols:
+            pytest.skip("cytome predates matrix_meta.is_integer")
+        # contradict the data: the recorded flag must win, which is how we
+        # know it is being read at all
+        con.execute("UPDATE matrix_meta SET is_integer = 0 "
+                    "WHERE matrix_name = 'RNA_counts'")
+        con.commit()
+    finally:
+        con.close()
+
+    ds = cytome.open(p)
+    try:
         assert _stored_matrix_is_integer(ds, "RNA") is False
     finally:
         ds.close()

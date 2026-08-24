@@ -503,9 +503,28 @@ def _stored_matrix_is_integer(ds, modality, n_probe=20000):
     """
     try:
         import numpy as _np
+        # cytome >= 0.3.0 records this at write time, when the data was in
+        # hand and the answer was certain. Prefer it: re-deriving a fact the
+        # writer already knew is how the probe below shipped as dead code.
+        try:
+            row = ds._conn.execute(
+                "SELECT is_integer FROM matrix_meta WHERE matrix_name = ?",
+                (f"{modality}_counts",),
+            ).fetchone()
+            if row is not None and row[0] is not None:
+                return bool(row[0])
+        except Exception:
+            pass                    # older schema: fall through to the probe
         name = f"{modality}_counts"
-        if ds.matrix_meta(name) is None:
+        meta = ds.matrix_meta(name)
+        if meta is None:
             return None
+        # cytome >= 0.3.0 records this at write time, which is the only moment
+        # it is both cheap and certain. Prefer it: re-deriving a fact the
+        # writer already knew is how this probe came to be dead code once.
+        recorded = meta.get("is_integer") if hasattr(meta, "get") else None
+        if recorded is not None:
+            return bool(recorded)
         for chunk in ds.iter_chunks(modality=modality, layer="counts",
                                     batch_size=512):
             # iter_chunks yields (matrix, row_indices), not a bare matrix.
@@ -550,6 +569,27 @@ def _resolve_auto_layer(layer, modality, ds=None):
             f"layer ('log1p' | 'infog' | 'tfidf' | 'counts')."
         )
     if resolved == "log1p" and ds is not None:
+        # cytome >= 0.3.0 does not write `{modality}_counts` unless the values
+        # really are counts, so on those files the matrix simply is not there.
+        # Fall back to whatever `adata.X` was, which is what makes `auto`
+        # equivalent to `cosg.cosg(adata)` -- the documented contract.
+        if ds.matrix_meta(f"{modality}_counts") is None:
+            recorded = None
+            try:
+                recorded = ds.metadata.get("_anndata_X_layer")
+            except Exception:
+                recorded = None
+            if recorded and recorded.startswith(f"{modality}_"):
+                main = recorded[len(modality) + 1:]
+                import warnings
+                warnings.warn(
+                    f"run_cosg_cytome(layer='auto'): this file has no "
+                    f"'{modality}_counts' -- cytome >= 0.3.0 only writes that "
+                    f"name for raw counts. Using '{main}', the matrix that "
+                    f"was adata.X. Pass an explicit layer to silence this.",
+                    UserWarning, stacklevel=3,
+                )
+                return main
         is_int = _stored_matrix_is_integer(ds, modality)
         if is_int is False:
             import warnings

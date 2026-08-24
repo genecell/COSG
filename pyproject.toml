@@ -81,6 +81,12 @@ dotplot = [
 # Upper bound because cytome pins its public API with a conformance test, so
 # 0.x minors are safe; the bound only stops a future 1.0 cleanup reaching
 # installs pinned to this release.
+# The floor stays at 0.2.3 deliberately. cytome 0.3.0 introduced the rule that
+# {modality}_counts holds raw integer counts or does not exist, and records
+# matrix_meta.is_integer -- but this package's job here is to read files
+# correctly whatever wrote them, including the 0.2.x files already on disk
+# whose {modality}_counts may hold normalized values. Requiring 0.3.0 would
+# force an upgrade that helps no file that already exists.
 cytome = [
     "cytome>=0.2.3,<1.0"
 ]
@@ -91,7 +97,12 @@ dev = [
     # very little: the dotplot and cytome-streaming tests would silently skip
     # (see tests/conftest.py) and a release could ship an untested backend.
     "scanpy>=1.6.0",
-    "cytome>=0.2.3,<1.0",
+    # The DEV floor is 0.3.0 while the runtime floor stays 0.2.3. The runtime
+    # must read files written by any version; the test suite must exercise the
+    # paths that only 0.3.0 produces -- matrix_meta.is_integer, and a file with
+    # {modality}_data and no {modality}_counts. Pinned lower, those tests skip
+    # and CI reports green on code nothing ran.
+    "cytome>=0.3.0,<1.0",
 ]
 
 [tool.hatch.version]

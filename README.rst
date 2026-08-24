@@ -75,6 +75,8 @@ Release notes
 
 - **Fixed:** the version had two sources of truth. ``pyproject.toml`` and ``cosg/__init__.py`` each carried a literal, and they agree only until a release bumps one of them. ``pyproject`` now declares the version dynamic and reads ``cosg.__version__``.
 
+- **Interoperates with cytome 0.3.0.** That release stops ``from_anndata`` writing a non-integer ``adata.X`` to ``{modality}_counts``, so newer files carry ``{modality}_data`` (or a name you chose) instead. ``layer='auto'`` recognises this: it reads the recorded ``_anndata_X_layer``, uses that matrix, and says which one it picked. Where cytome records ``matrix_meta.is_integer``, that is preferred over probing the values. The minimum cytome version is unchanged at 0.2.3 — this release exists to read *older* files correctly, and requiring 0.3.0 would help none of them.
+
 - If you have run ``run_cosg_cytome(layer='auto')`` on a cytome converted from a normalized AnnData, re-run it. Runs on raw-count files are unaffected, and any run that passed an explicit ``layer=`` was always correct.
 
 
