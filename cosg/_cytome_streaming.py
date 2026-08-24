@@ -493,13 +493,52 @@ def _unknown_layer_message(layer):
     )
 
 
-def _resolve_auto_layer(layer, modality):
+def _stored_matrix_is_integer(ds, modality, n_probe=20000):
+    """Whether the stored base matrix looks like raw integer counts.
+
+    Reads at most ``n_probe`` stored values -- cheap, and enough: a
+    log-normalised matrix has non-integers within its first chunk.
+    Returns ``None`` when it cannot tell, so callers can leave behaviour
+    unchanged rather than guess.
+    """
+    try:
+        import numpy as _np
+        name = f"{modality}_counts"
+        if ds.matrix_meta(name) is None:
+            return None
+        for chunk in ds.iter_chunks(modality=modality, layer="counts",
+                                    batch_size=512):
+            # iter_chunks yields (matrix, row_indices), not a bare matrix.
+            mat = chunk[0] if isinstance(chunk, tuple) else chunk
+            if _np.issubdtype(getattr(mat, "dtype", _np.float64), _np.integer):
+                return True                      # stored as an integer dtype
+            data = getattr(mat, "data", None)
+            if data is None:
+                data = _np.asarray(mat).ravel()
+            if len(data) == 0:
+                continue
+            probe = _np.asarray(data[:n_probe], dtype="float64")
+            return bool(_np.allclose(probe, _np.round(probe)))
+    except Exception:
+        return None
+    return None
+
+
+def _resolve_auto_layer(layer, modality, ds=None):
     """Resolve ``layer='auto'`` to a modality-appropriate normalization.
 
     Idempotent: any explicit layer (``'counts'|'log1p'|'infog'|'tfidf'`` or a
     materialised layer name) is returned unchanged. Called at the top of both
     low-level interpreters so every read path (cpu/gpu, on-the-fly/materialised)
     resolves ``auto`` identically regardless of entry point.
+
+    **``auto`` looks at the data, not only at the modality.** ``from_anndata``
+    stores whatever ``adata.X`` held in ``{modality}_counts`` -- including an
+    already log-normalised matrix -- so resolving RNA to ``log1p`` by table
+    lookup alone would log1p it a second time. The result stays plausible
+    (correlation ~0.99 against the in-memory reference) while being wrong by
+    enough to read as biology, which is the dangerous kind of wrong. When the
+    stored matrix is not integer, ``auto`` uses it as given and says so.
     """
     if layer != "auto":
         return layer
@@ -510,6 +549,19 @@ def _resolve_auto_layer(layer, modality):
             f"normalization is defined for this modality. Pass an explicit "
             f"layer ('log1p' | 'infog' | 'tfidf' | 'counts')."
         )
+    if resolved == "log1p" and ds is not None:
+        is_int = _stored_matrix_is_integer(ds, modality)
+        if is_int is False:
+            import warnings
+            warnings.warn(
+                f"run_cosg_cytome(layer='auto'): {modality}_counts does not "
+                f"hold integer counts, so it is already normalised -- applying "
+                f"log1p would normalise it twice. Using the stored values as "
+                f"given (equivalent to layer='counts'). Pass an explicit layer "
+                f"to silence this.",
+                UserWarning, stacklevel=3,
+            )
+            return "counts"
     return resolved
 
 
@@ -550,7 +602,7 @@ def _resolve_chunk_normalizer(layer, ds, modality, use_cached_stats):
         ``f(chunk, row_indices) -> normalized_chunk``. None means
         no transform — caller uses the raw counts chunk as-is.
     """
-    layer = _resolve_auto_layer(layer, modality)
+    layer = _resolve_auto_layer(layer, modality, ds=ds)
     if layer == "counts":
         return None
 
@@ -665,7 +717,7 @@ def _resolve_layer_to_read(ds, modality, layer, compute_on_fly):
     indicates whether ``_resolve_chunk_normalizer`` should produce a
     transform.
     """
-    layer = _resolve_auto_layer(layer, modality)
+    layer = _resolve_auto_layer(layer, modality, ds=ds)
     if layer == "counts":
         return "counts", False
     matrix_name = f"{modality}_{layer}"

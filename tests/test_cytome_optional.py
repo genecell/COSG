@@ -96,3 +96,14 @@ def test_import_cosg_without_cm_get_cmap(monkeypatch):
         "cm.get_cmap was removed in matplotlib 3.9; use plt.get_cmap:\n"
         + "\n".join(offenders)
     )
+
+
+def test_no_nested_pyproject_in_the_package():
+    """The build reads the ROOT pyproject.toml; a copy inside cosg/ ships in
+    every wheel and drifts (the old one still declared scanpy as a hard
+    dependency). One packaging file, at the root, full stop."""
+    import pathlib
+
+    pkg = pathlib.Path(__file__).resolve().parents[1] / "cosg"
+    assert not (pkg / "pyproject.toml").exists(), \
+        "cosg/pyproject.toml is a stale duplicate of the root pyproject.toml"

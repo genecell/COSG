@@ -4,7 +4,7 @@ requires = ["hatchling"]
 
 [project]
 name = "cosg"
-version = "1.1.2"
+dynamic = ["version"]     # single source: cosg/__init__.py
 description = "Accurate and fast cell marker gene identification with COSG (with optional GPU acceleration)"
 requires-python = ">=3.6"
 license = { text = "BSD-3-Clause" }
@@ -93,6 +93,12 @@ dev = [
     "scanpy>=1.6.0",
     "cytome>=0.2.3,<1.0",
 ]
+
+[tool.hatch.version]
+# One literal, in the package. A second one here drifts from it the moment
+# a release is prepared -- which is how cytome 0.2.6 shipped a manifest
+# claiming 0.2.5 and failed its own publish workflow.
+path = "cosg/__init__.py"
 
 [tool.hatch.build.targets.wheel]
 packages = ["cosg"]

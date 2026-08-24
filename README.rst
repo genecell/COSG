@@ -69,6 +69,22 @@ Development version:
 Release notes
 -------------
 
+**Release v1.1.3** (August 24, 2026)
+
+- **Fixed:** ``run_cosg_cytome(layer='auto')`` normalized an already-normalized matrix a second time. ``auto`` chose ``log1p`` for RNA from a table keyed on the modality alone, without looking at the data. Because ``cytome.from_anndata`` stores whatever ``adata.X`` held under ``{modality}_counts`` — including a log-normalized matrix — any file written from normalized input had ``log1p`` applied twice, while the function is documented as equivalent to ``cosg.cosg(adata)``. Correlation with the in-memory reference stayed around 0.99 and specificity moved by up to 0.11: small enough to pass a glance, large enough to change which genes rank as markers. ``auto`` now probes the stored matrix and, when it is demonstrably not integer, uses the values as given and warns, naming the override. An explicit ``layer=`` is obeyed untouched.
+
+- **Fixed:** the version had two sources of truth. ``pyproject.toml`` and ``cosg/__init__.py`` each carried a literal, and they agree only until a release bumps one of them. ``pyproject`` now declares the version dynamic and reads ``cosg.__version__``.
+
+- If you have run ``run_cosg_cytome(layer='auto')`` on a cytome converted from a normalized AnnData, re-run it. Runs on raw-count files are unaffected, and any run that passed an explicit ``layer=`` was always correct.
+
+
+**Release v1.1.2** (August 22, 2026)
+
+- **Fixed:** ``cosg.cosg(adata)`` raised ``ImportError`` on a default install. The cytome ``Dataset`` alias lookup was not guarded like the first one, so a missing optional cytome dependency produced an error instead of the documented empty-tuple fallback. Plain AnnData no longer requires cytome to be installed.
+
+- **Fixed:** ``plt.cm.get_cmap``, removed in matplotlib 3.9, replaced with ``plt.get_cmap``.
+
+
 **Release v1.1.1** (August 15, 2026)
 
 - Fixed the PyPI project page, which showed a single sentence instead of this README. The ``readme`` field pointed at an inline string rather than at ``README.rst``, so the long description was never packaged. Code is identical to v1.1.0.
