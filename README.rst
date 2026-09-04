@@ -34,6 +34,10 @@ Additionally, the R version of COSG is available `here <https://github.com/genec
 
 Note I: we released our Python toolkit, `PIASO <https://piaso.org>`_, in which some methods were built upon COSG.
 
+Tutorials — marker genes and their significance, on a cytome, across batches, on the GPU, and on
+spatial data — are at
+`piaso.org/tutorials/cosg-markers <https://piaso.org/tutorials/cosg-markers/>`_.
+
 Note II: we have also recently released `PIASOmarkerDB <https://piaso.org/piasomarkerdb>`_ for beta testing.
 
 Note III: COSG is also available for online analysis via `Galaxy platform <https://usegalaxy.eu/root?tool_id=cosg>`_.

@@ -938,6 +938,9 @@ def run_cosg_cytome(
     compute_on_fly=True,
     use_cached_stats=True,
     device="cpu",
+    calculate_pvalues=False,
+    pvalue_method="spa",
+    pvalue_fdr_method="fdr_bh",
     write_to_cytome=False,
     key_added="cosg",
     feature_name_col=None,
@@ -1218,6 +1221,16 @@ def run_cosg_cytome(
                 feature_batching = "disk"
         if _opened_here:
             ds.close()
+        if calculate_pvalues:
+            # This path holds only a block of features at a time, so the
+            # second pass that refines a tail cannot reach the values it
+            # needs. Say so rather than returning a table without the
+            # columns that were asked for.
+            raise NotImplementedError(
+                "calculate_pvalues is not available on the feature-batched "
+                "path (feature_batching=%r). Pass feature_batching='none' "
+                "for a significance run, or use cosg.cosg() on an AnnData."
+                % (feature_batching,))
         _batched_result = _run_cosg_batched(
             cytome_path, groupby, n_genes_user, mu,
             remove_lowly_expressed, expressed_pct,
@@ -1323,6 +1336,18 @@ def run_cosg_cytome(
     gene_sq_accum = np.zeros((n_batches, n_genes), dtype=np.float32)
     grp_count_accum = np.zeros((n_batches, n_groups), dtype=np.float64)
 
+    # The analytic p-value needs the first three population moments per gene.
+    # Two of the three quantities are already here: dot_accum IS the group sum
+    # T, and gene_sq_accum is the second power sum. Only the first and third
+    # power sums are new, so significance costs two reductions in a pass that
+    # already runs -- which is why the streaming path can carry it at all.
+    if calculate_pvalues:
+        gene_sum_accum = np.zeros(n_genes, dtype=np.float64)
+        gene_cube_accum = np.zeros(n_genes, dtype=np.float64)
+        gene_nnz_accum = np.zeros(n_genes, dtype=np.int64)
+    else:
+        gene_sum_accum = gene_cube_accum = gene_nnz_accum = None
+
     if remove_lowly_expressed and expressed_pct > 0:
         nnz_accum = np.zeros((n_genes, n_groups), dtype=np.int32)
     else:
@@ -1376,6 +1401,12 @@ def run_cosg_cytome(
             Xsq = chunk_csr.copy()
             Xsq.data = Xsq.data ** 2
             gene_sq_accum[0] += np.asarray(Xsq.sum(axis=0)).ravel()
+            if calculate_pvalues:
+                gene_sum_accum += np.asarray(chunk_csr.sum(axis=0)).ravel()
+                _cube = chunk_csr.copy()
+                _cube.data = _cube.data ** 3
+                gene_cube_accum += np.asarray(_cube.sum(axis=0)).ravel()
+                gene_nnz_accum += np.diff(chunk_csr.tocsc().indptr)
             del Xsq
             np.add.at(grp_count_accum[0], chunk_groups, 1.0)
         else:
@@ -1449,6 +1480,128 @@ def run_cosg_cytome(
                   f"< {batch_cell_number_threshold} cells in every batch; scored 0")
         cosine_sim = np.nan_to_num(acc, nan=0.0).astype(np.float32)
 
+    pvals_matrix = zscores_matrix = None
+    if calculate_pvalues:
+        from ._pvalues import (srswor_moments_from_sums, normal_tail,
+                               refine_tail, adjust_fdr)
+
+        if n_batches > 1:
+            raise NotImplementedError(
+                "calculate_pvalues with batch_key is not supported on the "
+                "streaming path yet; the stratified null needs per-batch "
+                "power sums. Use cosg.cosg() on an AnnData for a batched "
+                "significance run, or drop batch_key here.")
+
+        n_tot = int(n_cells_seen)
+        T_all = dot_accum[0].astype(np.float64)          # genes x groups
+        nc_all = grp_count_accum[0].astype(np.float64)
+        mean_g, s2_g, m3_g = srswor_moments_from_sums(
+            gene_sum_accum, gene_sq_accum[0].astype(np.float64),
+            gene_cube_accum, n_tot)
+
+        pvals_matrix, zscores_matrix, flagged = normal_tail(
+            T_all, nc_all, n_tot, mean_g, s2_g, m3_g,
+            k_nonzero=gene_nnz_accum,
+            method=pvalue_method,
+        )
+
+        # Second pass, over the flagged genes only, accumulating their value
+        # atoms rather than their values. The grid is fixed, so counts and
+        # sums per (gene, bin) add across chunks: the streamed summary is
+        # *identical* to the in-memory one, not merely close, and memory is
+        # bounded by the number of flagged genes instead of by how many cells
+        # express them.
+        if flagged.size and pvalue_method in ("spa", "exact"):
+            from ._pvalue_atoms import (StreamingAtomAccumulator, spa_atoms_tail,
+                                        values_are_integral, exact_tail_atoms)
+
+            want = np.unique(flagged[:, 0])
+            if verbose:
+                print(f"  p-values: refining {flagged.shape[0]} gene x group "
+                      f"entries over {want.size} genes (second pass)")
+            acc_atoms = StreamingAtomAccumulator(want)
+            integral = True
+            for chunk_csr, _ri in ds.iter_chunks(
+                    modality, cell_mask=cell_mask, batch_size=batch_size,
+                    layer=_layer_to_read):
+                if _chunk_normalizer is not None:
+                    chunk_csr = _chunk_normalizer(chunk_csr, _ri)
+                if integral and not values_are_integral(chunk_csr.data):
+                    integral = False
+                acc_atoms.add_chunk(chunk_csr)
+            aset = acc_atoms.finish()
+            pmap = aset.index_of()
+
+            exact_done = set()
+            if pvalue_method == "exact" and integral:
+                for gi, gj in flagged:
+                    gi, gj = int(gi), int(gj)
+                    j = pmap.get(gi)
+                    if j is None:
+                        continue
+                    lo, hi = aset.ptr[j], aset.ptr[j + 1]
+                    av, aw = aset.vals[lo:hi], aset.wts[lo:hi]
+                    k = float(aw.sum()); nc = float(nc_all[gj])
+                    if k == 0 or nc <= 0 or nc >= n_tot:
+                        continue
+                    eh = k * nc / max(n_tot, 1)
+                    h_max = int(min(k, nc, eh + 10.0 * np.sqrt(max(eh, 1.0)) + 25))
+                    got = exact_tail_atoms(av, aw, n_tot, int(nc),
+                                           float(T_all[gi, gj]), h_max)
+                    if got is not None:
+                        pvals_matrix[gi, gj] = got
+                        exact_done.add((gi, gj))
+
+            # One solver, shared with the in-memory path. Two implementations
+            # of one tail drift, and the drift shows up as a parity failure
+            # that reads as a numerical accident rather than as two different
+            # fallback decisions.
+            pairs, vals_parts, wts_parts = [], [], []
+            blk_ptr, blk_row, n_zero_l, n_c_l, t_obs = [0], [], [], [], []
+            pos = 0
+            for gi, gj in flagged:
+                gi, gj = int(gi), int(gj)
+                if (gi, gj) in exact_done:
+                    continue
+                j = pmap.get(gi)
+                if j is None:
+                    continue
+                lo, hi = aset.ptr[j], aset.ptr[j + 1]
+                av, aw = aset.vals[lo:hi], aset.wts[lo:hi]
+                nc = float(nc_all[gj])
+                if av.size == 0 or nc <= 0 or nc >= n_tot:
+                    continue
+                pairs.append((gi, gj))
+                vals_parts.append(av); wts_parts.append(aw)
+                pos += av.size
+                blk_ptr.append(pos); blk_row.append(len(pairs) - 1)
+                n_zero_l.append(float(n_tot) - float(aw.sum()))
+                n_c_l.append(nc)
+                t_obs.append(float(T_all[gi, gj]))
+            if pairs:
+                pvec, _lpvec, okvec = spa_atoms_tail(
+                    np.concatenate(vals_parts), np.concatenate(wts_parts),
+                    np.asarray(blk_ptr, dtype=np.int64),
+                    np.asarray(blk_row, dtype=np.int64),
+                    np.asarray(n_zero_l, dtype=np.float64),
+                    np.asarray(n_c_l, dtype=np.float64),
+                    np.asarray(t_obs, dtype=np.float64),
+                    lattice=integral)
+                n_failed = 0
+                for r, (gi, gj) in enumerate(pairs):
+                    if okvec[r]:
+                        pvals_matrix[gi, gj] = pvec[r]
+                    else:
+                        n_failed += 1
+                if n_failed:
+                    import warnings as _w
+                    _w.warn(
+                        f"COSG p-values: {n_failed} of {len(pairs)} refined "
+                        "entries did not converge and kept their "
+                        "normal-approximation p-value, which is "
+                        "anti-conservative in exactly that regime.",
+                        stacklevel=2)
+
     del dot_accum, gene_sq_accum
 
     # Apply COSG penalty formula
@@ -1470,6 +1623,10 @@ def run_cosg_cytome(
     # --- Sparse output (dict/long/dense): extract top-K per group ---
     if use_sparse_output:
         scores_dict = {}
+        # p-values for exactly the entries that get reported. Computed above
+        # and, until now, dropped on this output path -- the second pass over
+        # the flagged genes was paid for and the answer discarded.
+        _pv_dict, _pv_adj_dict = {}, {}
         for k in range(n_groups):
             col = genexlambda[:, k].copy()
             col[col < 0] = 0  # COSG sets filtered features to -1
@@ -1504,9 +1661,25 @@ def run_cosg_cytome(
             top_names = gene_names[top_idx]
             group_name = str(groups_order[k])
 
-            for name, score in zip(top_names, top_scores):
+            if pvals_matrix is not None:
+                # BH over every gene tested in this group, then read off the
+                # reported ones. Adjusting after selection would divide by the
+                # size of the top-K rather than the size of the screen.
+                from ._pvalues import adjust_fdr
+                _tested = genexlambda[:, k] > -1
+                _adj_col = np.full(pvals_matrix.shape[0], np.nan)
+                _adj_col[_tested] = adjust_fdr(
+                    pvals_matrix[_tested, k], pvalue_fdr_method)
+
+            for _j, (name, score) in enumerate(zip(top_names, top_scores)):
                 if score > 0:
                     scores_dict[(group_name, str(name))] = float(score)
+                    if pvals_matrix is not None:
+                        _gi = int(top_idx[_j])
+                        _pv_dict[(group_name, str(name))] = float(
+                            pvals_matrix[_gi, k])
+                        _pv_adj_dict[(group_name, str(name))] = float(
+                            _adj_col[_gi])
 
         del genexlambda
 
@@ -1541,6 +1714,9 @@ def run_cosg_cytome(
             ds=ds, modality=modality, verbose=verbose,
             feature_name_col=feature_name_col,
         )
+        if pvals_matrix is not None and isinstance(_result, dict):
+            _result['pvals'] = _pv_dict
+            _result['pvals_adj'] = _pv_adj_dict
         if _opened_here:
             ds.close()
         if write_to_cytome:
@@ -1551,6 +1727,11 @@ def run_cosg_cytome(
     # --- ndarray output: (names, scores) per-group top-N ---
     names_out = np.empty((n_genes_user, n_groups), dtype=object)
     scores_out = np.empty((n_genes_user, n_groups), dtype=np.float32)
+    pvals_out = pvals_adj_out = zscores_out = None
+    if pvals_matrix is not None:
+        pvals_out = np.empty((n_genes_user, n_groups), dtype=np.float64)
+        pvals_adj_out = np.empty((n_genes_user, n_groups), dtype=np.float64)
+        zscores_out = np.empty((n_genes_user, n_groups), dtype=np.float64)
 
     # Pre-compute per-group IQR once if iqr_normalize is requested. Same
     # all-values IQR semantics as the sparse path, so the two output
@@ -1580,6 +1761,19 @@ def run_cosg_cytome(
         else:
             scores_out[:, k] = raw_top
 
+        if pvals_matrix is not None:
+            # BH over the genes tested in this group, then subset to the
+            # reported top-N -- correcting after selection would divide by
+            # the wrong m.
+            from ._pvalues import adjust_fdr
+            tested = scores_k > -1
+            col = pvals_matrix[:, k]
+            adj = np.full(col.shape, np.nan)
+            adj[tested] = adjust_fdr(col[tested], pvalue_fdr_method)
+            pvals_out[:, k] = col[top_idx]
+            pvals_adj_out[:, k] = adj[top_idx]
+            zscores_out[:, k] = zscores_matrix[top_idx, k]
+
     if verbose:
         print(f"[cytome_cpu] Post-processing: {time.time() - t_post:.3f}s")
         print(f"[cytome_cpu] TOTAL: {time.time() - t0:.3f}s")
@@ -1591,6 +1785,10 @@ def run_cosg_cytome(
         'scores': scores_out,
         'groups_order': groups_order,
     }
+    if pvals_out is not None:
+        _nd_result['pvals'] = pvals_out
+        _nd_result['pvals_adj'] = pvals_adj_out
+        _nd_result['zscores'] = zscores_out
     if write_to_cytome:
         _persist_cosg_markers(cytome_path, _nd_result, groupby,
                               modality, n_genes_user, key_added)

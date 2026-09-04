@@ -103,6 +103,7 @@ def _dispatch_to_cytome(
     device, verbosity,
     batch_key, batch_cell_number_threshold,   # Round 30: shared with the cytome path
     layer,                              # Round 9: shared kwarg, forward as layer=
+    calculate_pvalues, pvalue_method, pvalue_fdr_method,   # shared p-value kwargs
     _anndata_only_values,
     # cytome-only kwargs (each may be _CYTOME_DEFAULT):
     modality, cell_mask, batch_size, feature_batching, min_total_count,
@@ -171,6 +172,13 @@ def _dispatch_to_cytome(
     if batch_key is not None:
         _fwd["batch_key"] = batch_key
         _fwd["batch_cell_number_threshold"] = batch_cell_number_threshold
+    # The p-value kwargs are shared, and were being accepted here and dropped
+    # on the way to the cytome path -- the caller asked for p-values and got a
+    # result with no p-value keys and no complaint.
+    if calculate_pvalues:
+        _fwd["calculate_pvalues"] = True
+        _fwd["pvalue_method"] = pvalue_method
+        _fwd["pvalue_fdr_method"] = pvalue_fdr_method
     for _name, _val in (
         ("modality", modality), ("cell_mask", cell_mask),
         ("batch_size", batch_size), ("feature_batching", feature_batching),
@@ -200,6 +208,9 @@ def cosg(
     batch_cell_number_threshold: int = 3,
     key_added: Optional[str] = None,
     calculate_logfoldchanges: bool = False,
+    calculate_pvalues: bool = False,
+    pvalue_method: str = 'spa',
+    pvalue_fdr_method: str = 'fdr_bh',
     use_raw: bool = False,
     layer: Optional[str] = None,
     reference: str = 'rest',
@@ -272,6 +283,78 @@ def cosg(
         Key under which the COSG results will be stored in `adata.uns`. If None, the default key 'cosg' is used.
     calculate_logfoldchanges : bool, default False
         If True, computes log fold-changes for the marker genes.
+    calculate_pvalues : bool, default False
+        Add analytic significance to the marker table -- `pvals`, `pvals_adj`,
+        `neg_log10_pvals`
+        p-values are computed on the raw cosine, not the mu-regularized score:
+        the null does not contain ``mu``, so the same gene keeps its p-value at
+        any ``mu`` while its rank moves. With ``batch_key`` the null becomes
+        stratified permutation and both the moments and the saddlepoint tail
+        are computed per stratum and combined.
+
+        Honest use: when ``groupby`` came from clustering this same matrix the
+        p-values are optimistic, because the labels were chosen to separate
+        these cells (post-selection inference). Labels from independent
+        information -- annotation, another modality, or a count split -- are
+        the valid cases.
+        and `zscores` alongside `names` and `scores`. Default False leaves the
+        output exactly as it was.
+
+        COSG's cosine specificity score is widely adopted across the
+        single-cell field; this completes it with a significance layer
+        calibrated on COSG's own statistic, so a COSG marker table carries its
+        own p-values and FDR rather than borrowing them from a separate test
+        run alongside. Under the null that a gene's expression is independent
+        of the grouping, the cosine is a monotone function of that gene's sum
+        over the group -- a sample sum without replacement, with exact
+        moments -- so the p-value is analytic: no permutations sampled, no
+        number-of-permutations parameter, and no p-value floor, which is what
+        lets BH behave normally at any threshold.
+
+        **P-values are identical across `mu`, by design.** `mu` sets how
+        harshly to discount a gene that is also high elsewhere: a preference
+        about ranking genes that are genuinely associated. The null contains
+        no `mu`, so chance has one answer per gene per group. Read the FDR as
+        gating association and the score as ranking specificity -- a gene
+        significant in two groups with a modest score in each is a lineage
+        marker rather than a type marker, which is information rather than a
+        contradiction.
+
+        **Double dipping.** If `groupby` came from clustering this same
+        matrix, these p-values are optimistic: the labels were chosen using
+        the data they are now tested against (post-selection inference; Gao,
+        Bien & Witten 2022). Valid uses are labels carrying independent
+        information -- curated annotation, another modality -- or count
+        splitting (Neufeld et al. 2022), training labels on one split and
+        testing on the other via `layer`. This is a property of the design,
+        not of the approximation; sampling permutations instead would not
+        fix it.
+    pvalue_method : str, default 'spa'
+        Which tail to report. All four test the same statistic and differ only
+        in how the tail is computed.
+
+        - ``'spa'`` (default, recommended): the normal approximation where the
+          tail cannot change a decision, and a conditional saddlepoint
+          wherever it can. On integer data the tail is evaluated with a
+          lattice correction. Costs roughly one extra pass over the nonzeros
+          plus a vectorised solve over the flagged entries -- on 100,000 cells
+          x 30,000 genes x 24 groups, about 4x `cosg()` alone.
+        - ``'normal'``: skips the refinement. Fast, and anti-conservative on
+          sparse genes by 3-36x at the thresholds markers are called at, so it
+          is for comparison rather than for use.
+        - ``'exact'``: the exact conditional permutation tail, computed from
+          the same value atoms by polynomial arithmetic (Pagano & Tritchler,
+          1983). **Integer layers only** -- the construction indexes its state
+          by the sum, which requires the sum to lie on a lattice; on
+          normalised values it warns and falls back to the saddlepoint. It is
+          the oracle the saddlepoint is measured against in the test suite,
+          and it differs from ``'spa'`` by a few percent at 100-1000x the
+          cost, so it is a check rather than a default.
+        - ``'permutation'``: samples the null. The validation oracle, with
+          resolution bounded by ``1 / (n_permutations + 1)``.
+    pvalue_fdr_method : str, default 'fdr_bh'
+        Benjamini-Hochberg within each group, over that group's tested genes.
+        Use 'fdr_by' (Benjamini-Yekutieli) for distribution-free control.
     use_raw : bool, default False
         If True and `adata.raw` exists, raw UMI counts saved in `adata.raw.X` are used for calculations.
     layer : str, optional, default None
@@ -375,6 +458,9 @@ def cosg(
                 expressed_min_num_cells_in_target_group,
             device=device,
             verbosity=verbosity,
+            calculate_pvalues=calculate_pvalues,
+            pvalue_method=pvalue_method,
+            pvalue_fdr_method=pvalue_fdr_method,
             layer=layer,
             batch_key=batch_key,
             batch_cell_number_threshold=batch_cell_number_threshold,
@@ -906,6 +992,49 @@ def cosg(
         results_names = {}
         results_scores = {}
         results_logfoldchanges = {} if calculate_logfoldchanges else None
+        results_pvals = {} if calculate_pvalues else None
+        results_pvals_adj = {} if calculate_pvalues else None
+        results_zscores = {} if calculate_pvalues else None
+        results_neglog10 = {} if calculate_pvalues else None
+
+        pvals_matrix = zscores_matrix = None
+        if calculate_pvalues:
+            from ._pvalues import analytic_pvalues, adjust_fdr
+
+            if pvalue_method not in ('spa', 'normal', 'exact', 'permutation'):
+                raise ValueError(
+                    f"pvalue_method={pvalue_method!r} is not one of "
+                    "'spa', 'normal', 'exact', 'permutation'")
+            _batch_vec = None
+            if batch_key is not None:
+                _batch_vec = adata.obs[batch_key].values[cells_selected] \
+                    if 'cells_selected' in dir() else adata.obs[batch_key].values
+            if pvalue_method == 'permutation':
+                from ._pvalues import permutation_pvalues
+                pvals_matrix = permutation_pvalues(
+                    cellxgene, group_info.values, groups_order,
+                    batch=_batch_vec)
+                zscores_matrix = np.zeros_like(pvals_matrix)
+                _neglog10 = -np.log10(np.clip(pvals_matrix, 1e-300, 1.0))
+            else:
+                pvals_matrix, zscores_matrix, _pv_info = analytic_pvalues(
+                    cellxgene, group_info.values, groups_order,
+                    batch=_batch_vec, method=pvalue_method,
+                    verbosity=verbosity)
+                # -log10 p from the saddlepoint's own log-space form: a third
+                # of a clean cell type's top markers reach the float64 floor
+                # (~1e-308) and every one then reads as the same number, so
+                # `pvals` alone cannot rank them.
+                _neglog10 = (-_pv_info["log_p"] / np.log(10.0)
+                             if "log_p" in _pv_info else
+                             -np.log10(np.clip(pvals_matrix, 1e-300, 1.0)))
+                if verbosity > 0:
+                    print(
+                        f"COSG p-values: {_pv_info['n_exact']} exact, "
+                        f"{_pv_info['n_spa']} saddlepoint, "
+                        f"{_pv_info['n_normal']} normal"
+                        + (f", {_pv_info['n_spa_failed']} refinements declined"
+                           if _pv_info['n_spa_failed'] else ""))
 
         for order_i, group_i in enumerate(groups_order):
             idx_i=group_info==group_i
@@ -945,6 +1074,20 @@ def cosg(
             results_names[group_i] = adata.var_names.values[global_indices]
             results_scores[group_i] = scores[global_indices]
 
+            if calculate_pvalues:
+                # BH runs over the genes actually tested in this group, not
+                # over the reported top-N: correcting after selection would
+                # divide by the wrong m and understate the correction.
+                tested = scores > -1 if remove_lowly_expressed else np.ones(
+                    pvals_matrix.shape[0], dtype=bool)
+                col = pvals_matrix[:, order_i]
+                adj_full = np.full(col.shape, np.nan)
+                adj_full[tested] = adjust_fdr(col[tested], pvalue_fdr_method)
+                results_pvals[group_i] = col[global_indices]
+                results_pvals_adj[group_i] = adj_full[global_indices]
+                results_zscores[group_i] = zscores_matrix[global_indices, order_i]
+                results_neglog10[group_i] = _neglog10[global_indices, order_i]
+
             if calculate_logfoldchanges and anndata_obj is not None:
                 group_index = np.where(anndata_obj.groups_order == group_i)[0][0]
                 if anndata_obj.means is not None:
@@ -966,6 +1109,11 @@ def cosg(
             columns_data[(group_i, 'scores')] = results_scores[group_i]
             if calculate_logfoldchanges and group_i in results_logfoldchanges:
                 columns_data[(group_i, 'logfoldchanges')] = results_logfoldchanges[group_i]
+            if calculate_pvalues:
+                columns_data[(group_i, 'pvals')] = results_pvals[group_i]
+                columns_data[(group_i, 'pvals_adj')] = results_pvals_adj[group_i]
+                columns_data[(group_i, 'zscores')] = results_zscores[group_i]
+                columns_data[(group_i, 'neg_log10_pvals')] = results_neglog10[group_i]
         rank_stats = pd.DataFrame(columns_data)
 
     #### also return a copy of the results showing the results by group
@@ -989,6 +1137,13 @@ def cosg(
             'names': 'O',
             'scores': 'float32',
             'logfoldchanges': 'float32',
+            # p-values stay float64: a float32 cannot hold 1e-40 without
+            # flushing to zero, and the whole point of the analytic route is
+            # that there is no floor.
+            'pvals': 'float64',
+            'pvals_adj': 'float64',
+            'zscores': 'float64',
+            'neg_log10_pvals': 'float64',
     }
     
     rank_stats.columns = rank_stats.columns.swaplevel()
