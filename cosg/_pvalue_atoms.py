@@ -57,7 +57,7 @@ from scipy import sparse
 from scipy.special import expit, log_expit, ndtr, log_ndtr
 
 __all__ = [
-    "exact_tail_atoms",
+    "exact_tail_atoms", "exact_tail_bounded",
     "GRID_VMIN", "GRID_RATIO", "GRID_NBINS",
     "value_bin_index", "atoms_from_columns", "AtomSet",
     "spa_atoms_tail", "values_are_integral",
@@ -600,3 +600,28 @@ def exact_tail_atoms(vals, wts, n, n_c, t, h_max, pi=None):
     tot = Q.sum(axis=1)
     ok = tot > 0
     return float(np.clip(np.sum(ph[ok] * tail[ok] / tot[ok]), 0.0, 1.0))
+
+
+def exact_tail_bounded(vals, wts, n, n_c, t, h_max, rel_tol=1e-3):
+    """:func:`exact_tail_atoms` where its truncation cannot matter, else None.
+
+    The table stops at ``h_max`` cells of the group expressing the gene, which
+    keeps it affordable, and leaves out the tail mass of the larger ``h``. That
+    mass is at most ``P(h > h_max)``, the hypergeometric tail, so the true
+    ``P(T >= t)`` lies in ``[p, p + P(h > h_max)]``. A strong marker, whose
+    observed ``h`` is past ``h_max``, came back as exactly 0 (or an
+    underestimate of any size). This returns ``p`` only when it is at least
+    ``1 / rel_tol`` times the mass left out, so its relative error is below
+    ``rel_tol``; otherwise None, and the caller uses the saddlepoint.
+    """
+    p = exact_tail_atoms(vals, wts, n, n_c, t, h_max)
+    if p is None or not p > 0.0:
+        return None
+    from scipy.stats import hypergeom
+    k = int(round(float(np.asarray(wts, dtype=np.float64).sum())))
+    h_cap = int(min(h_max, k, n_c))
+    if h_cap < min(k, int(n_c)):
+        left_out = float(hypergeom.sf(h_cap, int(n), k, int(n_c)))
+        if not p * rel_tol >= left_out:
+            return None
+    return p

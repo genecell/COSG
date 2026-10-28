@@ -1019,6 +1019,271 @@ def plotMarkerDendrogram(
     
 ### packaged dotplot function in COSG
 
+def _dotplot_matrices(adata, groupby, genes, ordering, layer=None,
+                      expression_cutoff=0.0):
+    """Mean expression and fraction expressing, per (group, gene).
+
+    Returns two DataFrames indexed by ``ordering`` with ``genes`` as columns.
+    Computed once, from one pass over the requested columns, so the cost is set
+    by the number of plotted genes rather than by the width of the matrix.
+    """
+    import numpy as np
+    import pandas as pd
+    from scipy import sparse as _sp
+
+    missing = [g for g in genes if g not in adata.var_names]
+    if missing:
+        raise ValueError(
+            f"{len(missing)} gene(s) not in adata.var_names, e.g. {missing[:5]}. "
+            f"They came from the COSG result, so this usually means `adata` is "
+            f"not the object COSG was run on."
+        )
+
+    X = adata[:, genes].layers[layer] if layer is not None else adata[:, genes].X
+    if _sp.issparse(X):
+        X = X.tocsr()
+    labels = pd.Categorical(adata.obs[groupby].astype(str),
+                            categories=[str(c) for c in ordering])
+    codes = labels.codes
+    n_groups, n_genes = len(ordering), len(genes)
+    means = np.zeros((n_groups, n_genes), dtype=np.float64)
+    fracs = np.zeros((n_groups, n_genes), dtype=np.float64)
+    for gi in range(n_groups):
+        rows = np.flatnonzero(codes == gi)
+        if rows.size == 0:
+            continue
+        block = X[rows]
+        if _sp.issparse(block):
+            means[gi] = np.asarray(block.mean(axis=0)).ravel()
+            nz = block > expression_cutoff
+            fracs[gi] = np.asarray(nz.sum(axis=0)).ravel() / rows.size
+        else:
+            block = np.asarray(block)
+            means[gi] = block.mean(axis=0)
+            fracs[gi] = (block > expression_cutoff).sum(axis=0) / rows.size
+    idx = [str(c) for c in ordering]
+    return (pd.DataFrame(means, index=idx, columns=genes),
+            pd.DataFrame(fracs, index=idx, columns=genes))
+
+
+def _scale_means(means, standard_scale):
+    """Scale to [0, 1] across genes ('var') or across groups ('group')."""
+    if standard_scale is None:
+        return means
+    if standard_scale == "var":
+        axis = 0            # over groups, per gene
+    elif standard_scale == "group":
+        axis = 1            # over genes, per group
+    else:
+        raise ValueError(
+            f"standard_scale must be 'var', 'group' or None; got {standard_scale!r}."
+        )
+    lo = means.min(axis=axis)
+    hi = means.max(axis=axis)
+    rng = (hi - lo).replace(0, 1.0)          # a constant row/column stays at 0
+    return (means.sub(lo, axis=1 - axis)).div(rng, axis=1 - axis)
+
+
+def _draw_group_brackets(ax, spans, labels, orientation, color="black",
+                         fontsize=8, linewidth=1.0, bracket_inches=0.16,
+                         axis_inches=1.0):
+    """Draw the group brackets, with the labels written out in full.
+
+    scanpy truncates these to ``2 x (genes per group)`` characters, which turns
+    'L2-3 IT', 'L6 IT' and 'L5 IT' into 'L2 .', 'L6 .' and 'L5 .' as soon as you
+    ask for two genes per group -- exactly when you most need to tell them
+    apart. Here the label is never cut.
+
+    The bracket itself gets a fixed physical depth (``bracket_inches``) and the
+    rest of the axis is label room, so a long label extends into space that was
+    reserved for it instead of overflowing into whatever is drawn next door.
+    """
+    ax.set_axis_off()
+    depth = max(1.0, axis_inches / max(bracket_inches, 1e-6))
+    for (start, end), label in zip(spans, labels):
+        lo, hi = start - 0.4, end + 0.4
+        mid = (lo + hi) / 2
+        if orientation == "top":
+            ax.plot([lo, lo, hi, hi], [0, 1, 1, 0], color=color, lw=linewidth,
+                    clip_on=False)
+            ax.text(mid, 1.3, label, ha="left", va="bottom", rotation=45,
+                    fontsize=fontsize, rotation_mode="anchor")
+        else:                                    # 'right'
+            ax.plot([0, 1, 1, 0], [lo, lo, hi, hi], color=color, lw=linewidth,
+                    clip_on=False)
+            ax.text(1.3, mid, label, ha="left", va="center", fontsize=fontsize)
+    if orientation == "top":
+        ax.set_ylim(0, depth)
+    else:
+        ax.set_xlim(0, depth)
+
+
+def _draw_dendrogram(ax, linkage_matrix, n_leaves, orientation, color="0.3",
+                     linewidth=0.9):
+    """Draw the linkage in leaf coordinates, so it lines up with the dot grid.
+
+    The leaves are placed at 0..n-1 to match the dot centres. scanpy scales the
+    tree to its own axis instead, which is why its dendrogram drifts out of
+    register with the rows it labels.
+    """
+    from scipy.cluster.hierarchy import dendrogram as _sch_dendrogram
+
+    info = _sch_dendrogram(linkage_matrix, no_plot=True)
+    ax.set_axis_off()
+    # scipy lays leaves out at 5, 15, 25, ...; map that onto 0, 1, 2, ...
+    for xs, ys in zip(info["icoord"], info["dcoord"]):
+        leaf_pos = [(x - 5.0) / 10.0 for x in xs]
+        if orientation == "top":
+            ax.plot(leaf_pos, ys, color=color, lw=linewidth, clip_on=False)
+        else:
+            ax.plot(ys, leaf_pos, color=color, lw=linewidth, clip_on=False)
+    # Only the height axis is set here. The leaf axis is shared with the dot
+    # grid, and that grid is drawn top-down -- setting it from this side
+    # silently flipped the whole plot upside down.
+    height = max((max(d) for d in info["dcoord"]), default=1.0) * 1.05
+    if orientation == "top":
+        ax.set_ylim(0, height)
+    else:
+        ax.set_xlim(0, height)
+    return info
+
+
+def _render_dotplot(mean_df, frac_df, *, group_spans, group_labels,
+                    swap_axes=False, cmap="Spectral_r", dot_max=None,
+                    dot_min=0.0, largest_dot=110.0, smallest_dot=1.0,
+                    linkage_matrix=None, colorbar_title="Mean expression\nin group",
+                    size_title="Fraction of cells\nin group (%)",
+                    figsize=None, grid=False, ax=None, fontsize=8):
+    """Draw the dot plot. Rows/columns follow ``mean_df`` exactly.
+
+    Laid out in inches with explicit axes rectangles rather than a gridspec:
+    the margins have to hold tick labels, bracket labels and two legends whose
+    sizes are set by their text, and a ratio-based grid cannot know how long
+    'Oligodendrocyte' is.
+    """
+    import numpy as np
+    import matplotlib.pyplot as plt
+
+    groups = list(mean_df.index)
+    genes = list(mean_df.columns)
+    if swap_axes:
+        M, F = mean_df.T, frac_df.T           # genes x groups
+        x_labels, y_labels = groups, genes
+        dendro_side, bracket_side = "top", "right"
+    else:
+        M, F = mean_df, frac_df               # groups x genes
+        x_labels, y_labels = genes, groups
+        dendro_side, bracket_side = "right", "top"
+
+    n_y, n_x = M.shape
+    CELL = 0.26                                # inches per row/column
+    CH = fontsize / 72.0 * 0.62                # rough width of one character
+
+    # Margins sized from the text that has to fit in them.
+    left = 0.25 + CH * max(len(str(v)) for v in y_labels)
+    bottom = 0.25 + CH * max(len(str(v)) for v in x_labels)
+    top_pad = 0.15
+    if bracket_side == "top":                  # 45-degree labels above the grid
+        top_h = 0.32 + CH * 0.80 * max(len(str(v)) for v in group_labels)
+    else:
+        top_h = 0.75 if linkage_matrix is not None else 0.05
+    if bracket_side == "right":
+        side_w = 0.34 + CH * 1.15 * max(len(str(v)) for v in group_labels)
+    else:
+        side_w = 0.75 if linkage_matrix is not None else 0.05
+    legend_w = 1.55
+
+    grid_w = max(1.4, CELL * n_x)
+    grid_h = max(1.2, CELL * n_y)
+    if figsize is not None:                    # honour an explicit request
+        fig_w, fig_h = figsize
+        grid_w = max(1.0, fig_w - left - side_w - legend_w - 0.2)
+        grid_h = max(1.0, fig_h - bottom - top_h - top_pad)
+    else:
+        fig_w = left + grid_w + side_w + legend_w + 0.2
+        fig_h = bottom + grid_h + top_h + top_pad
+
+    if ax is not None:
+        fig, dot_ax = ax.figure, ax
+    else:
+        fig = plt.figure(figsize=(fig_w, fig_h))
+        dot_ax = fig.add_axes([left / fig_w, bottom / fig_h,
+                               grid_w / fig_w, grid_h / fig_h])
+
+    fracs = F.values
+    dot_max = float(np.nanmax(fracs)) if dot_max is None else float(dot_max)
+    dot_max = dot_max if dot_max > 0 else 1.0
+    frac_clipped = np.clip((fracs - dot_min) / (dot_max - dot_min), 0, 1)
+    sizes = smallest_dot + frac_clipped * (largest_dot - smallest_dot)
+
+    yy, xx = np.mgrid[0:n_y, 0:n_x]
+    vals = M.values
+    sc = dot_ax.scatter(xx.ravel(), yy.ravel(), s=sizes.ravel(),
+                        c=vals.ravel(), cmap=cmap,
+                        vmin=float(np.nanmin(vals)), vmax=float(np.nanmax(vals)),
+                        edgecolors="none")
+    dot_ax.set_xticks(range(n_x))
+    dot_ax.set_xticklabels(x_labels, rotation=90, fontsize=fontsize)
+    dot_ax.set_yticks(range(n_y))
+    dot_ax.set_yticklabels(y_labels, fontsize=fontsize)
+    dot_ax.set_xlim(-0.6, n_x - 0.4); dot_ax.set_ylim(n_y - 0.4, -0.6)
+    dot_ax.tick_params(axis="both", length=0)
+    for side in ("top", "right"):
+        dot_ax.spines[side].set_visible(False)
+    if grid:
+        dot_ax.set_axisbelow(True); dot_ax.grid(color="0.9", lw=.5)
+
+    if ax is not None:
+        return dot_ax
+
+    top_ax = fig.add_axes([left / fig_w, (bottom + grid_h) / fig_h,
+                           grid_w / fig_w, top_h / fig_h], sharex=dot_ax)
+    side_ax = fig.add_axes([(left + grid_w) / fig_w, bottom / fig_h,
+                            side_w / fig_w, grid_h / fig_h], sharey=dot_ax)
+    for a in (top_ax, side_ax):
+        a.set_axis_off()
+
+    if bracket_side == "top":
+        _draw_group_brackets(top_ax, group_spans, group_labels, "top",
+                             fontsize=fontsize, axis_inches=top_h)
+        other_ax, n_leaves = side_ax, n_y
+    else:
+        _draw_group_brackets(side_ax, group_spans, group_labels, "right",
+                             fontsize=fontsize, axis_inches=side_w)
+        other_ax, n_leaves = top_ax, n_x
+    if linkage_matrix is not None:
+        _draw_dendrogram(other_ax, linkage_matrix, n_leaves, dendro_side)
+
+    # Decorations share the leaf axis with the grid; re-assert the grid's own
+    # limits so nothing drawn above or beside it can change the reading order.
+    dot_ax.set_xlim(-0.6, n_x - 0.4)
+    dot_ax.set_ylim(n_y - 0.4, -0.6)
+
+    # --- legends: fixed-size axes pinned to the top-right corner, so they never
+    # grow with the grid and never reach back over the bracket labels.
+    lx = (left + grid_w + side_w + 0.15) / fig_w
+    lw = (legend_w - 0.30) / fig_w
+    size_h, cbar_h, gap = 0.55, 0.18, 0.42
+    sy = (fig_h - top_pad - size_h) / fig_h
+    size_ax = fig.add_axes([lx, sy, lw, size_h / fig_h]); size_ax.set_axis_off()
+    steps = np.array([0.2, 0.4, 0.6, 0.8, 1.0])
+    size_ax.scatter(np.arange(len(steps)), np.zeros(len(steps)),
+                    s=smallest_dot + steps * (largest_dot - smallest_dot),
+                    c="0.45", edgecolors="none", clip_on=False)
+    for i, v in enumerate(steps * dot_max):
+        size_ax.text(i, -1.15, f"{100 * v:.0f}", ha="center", va="top",
+                     fontsize=fontsize - 1)
+    size_ax.set_xlim(-0.8, len(steps) - 0.2); size_ax.set_ylim(-1.9, 1.0)
+    size_ax.set_title(size_title, fontsize=fontsize, loc="left", pad=4)
+
+    cy = sy - (gap + cbar_h) / fig_h
+    cbar_ax = fig.add_axes([lx, cy, lw * 0.86, cbar_h / fig_h])
+    cb = fig.colorbar(sc, cax=cbar_ax, orientation="horizontal")
+    cb.ax.tick_params(labelsize=fontsize - 1)
+    cb.set_label(colorbar_title, fontsize=fontsize)
+    return dot_ax
+
+
 def plotMarkerDotplot(
     adata: AnnData,
     groupby: str,
@@ -1030,21 +1295,23 @@ def plotMarkerDotplot(
     standard_scale: str = 'var',
     cmap: str = 'Spectral_r',
     save: str = None,
+    show: bool = True,
+    dpi: int = 200,
+    expression_cutoff: float = 0.0,
+    backend: str = 'native',
     **dotplot_kwargs
 ):
     """
     Generate a dot plot of top marker genes identified by COSG.
 
     The function computes the cell cluster ordering using a dendrogram (if `use_rep` is provided)
-    or derives it from `adata.obs[groupby]`, extracts the top marker genes identified by COSG, 
-    and plots a dotplot using Scanpy's `sc.pl.dotplot`.
+    or derives it from `adata.obs[groupby]`, extracts the top marker genes identified by COSG,
+    and draws the dot plot itself (the default, `backend='native'`), which needs no scanpy.
 
-    Requires scanpy, which is an optional dependency of COSG::
+    `backend='scanpy'` calls Scanpy's `sc.pl.dotplot` instead, and needs scanpy, an optional
+    dependency of COSG::
 
         pip install 'cosg[dotplot]'
-
-    It is the only function in COSG that needs it. `plotMarkerDendrogram` and
-    `plotMarkerStream` do not.
 
     Parameters
     ----------
@@ -1068,14 +1335,46 @@ def plotMarkerDotplot(
     cmap : str, optional (default: 'Spectral_r')
         The colormap used for the dot plot.
     save : str or None, optional
-        If provided, saves the plot to a file. The filename should include an extension (e.g., `"cosg_markers.pdf"`).
+        Path to write the figure to, extension included (e.g. `"markers.pdf"`).
+        Note this is a **path**, not scanpy's `save` — scanpy treats the value
+        as a filename suffix pasted after `figures/dotplot_`, so an absolute
+        path raised `FileNotFoundError`. With `backend='scanpy'` the old
+        meaning applies, because the call is scanpy's.
+    show : bool, optional (default: True)
+        Call `plt.show()` and return ``None``. Pass ``False`` to skip the draw
+        and get the axes back, to keep drawing on them.
+
+        *Changed in 1.2.1*: the default used to return the axes as well, so
+        every notebook cell printed ``<Axes: ...>`` under the figure.
+    dpi : int, optional (default: 200)
+        Resolution used when `save` is given.
+    expression_cutoff : float, optional (default: 0.0)
+        A cell counts as expressing a gene when its value is strictly above
+        this, which sets the dot sizes.
+    backend : {'native', 'scanpy'}, optional (default: 'native')
+        `'native'` draws the plot here and needs no scanpy. `'scanpy'`
+        delegates to `sc.pl.dotplot` as before, for anything depending on its
+        exact output; it carries two layout defects that cannot be reached
+        through its arguments:
+
+        - group-bracket labels are truncated to `2 x (genes per group)`
+          characters when they sit on the right (`swap_axes=True`), so with
+          `top_n_genes=2` 'L6 CT', 'L6 IT' and 'L6 IT Car3' all render as
+          'L6 .';
+        - the dendrogram is drawn on its own scale rather than in leaf
+          coordinates, so it can drift out of register with the rows it labels.
     **dotplot_kwargs : dict
-        Additional keyword arguments to pass to `sc.pl.dotplot`.
+        Additional keyword arguments. With `backend='native'` these go to the
+        renderer (`dot_max`, `dot_min`, `largest_dot`, `smallest_dot`,
+        `figsize`, `grid`, `fontsize`, `colorbar_title`, `size_title`, `ax`);
+        with `backend='scanpy'`, to `sc.pl.dotplot`.
 
     Returns
     -------
-    None
-        Displays the dot plot.
+    matplotlib.axes.Axes or None
+        `None` with `show=True` (the default) and with `backend='scanpy'`;
+        with `show=False`, the dot grid's axes, so the figure can be adjusted
+        or saved by the caller.
 
     Raises
     ------
@@ -1168,8 +1467,9 @@ def plotMarkerDotplot(
     # Extract the top_n_genes marker genes for each group from the COSG results.
     df_tmp = pd.DataFrame(adata.uns[key_cosg]['names'][:top_n_genes,]).T
 
-    # Reorder rows based on the derived ordering.
-    df_tmp = df_tmp.reindex(ordering)
+    # Reorder rows based on the derived ordering. A category without cells has
+    # no markers in COSG's result (it is not scored), so it is left out here.
+    df_tmp = df_tmp.reindex([g for g in ordering if g in df_tmp.index])
 
     # Convert the DataFrame rows to a dictionary of marker genes per group.
     marker_genes_list = {idx: list(row.values) for idx, row in df_tmp.iterrows()}
@@ -1179,20 +1479,87 @@ def plotMarkerDotplot(
     # above already wrote adata.uns['dendrogram_<groupby>'] in scanpy's own
     # layout, so sc.pl.dotplot reads it rather than recomputing.
     use_dendrogram = use_rep is not None
-    # Generate and display the dot plot with the provided parameters.
-    sc = _require_scanpy("plotMarkerDotplot")
-    sc.pl.dotplot(
-        adata,
-        marker_genes_list,
-        groupby=groupby,
-        layer=layer,
-        dendrogram=use_dendrogram,
-        swap_axes=swap_axes,
-        standard_scale=standard_scale,
-        cmap=cmap,
-        save=save,
-        **dotplot_kwargs
+
+    if backend == "scanpy":
+        sc = _require_scanpy("plotMarkerDotplot(backend='scanpy')")
+        sc.pl.dotplot(
+            adata,
+            marker_genes_list,
+            groupby=groupby,
+            layer=layer,
+            dendrogram=use_dendrogram,
+            swap_axes=swap_axes,
+            standard_scale=standard_scale,
+            cmap=cmap,
+            save=save,
+            **dotplot_kwargs,
+        )
+        return None
+
+    # --- native renderer (default). Draws the same plot without scanpy, and
+    # without two layout problems that cannot be reached through sc.pl.dotplot:
+    # the group-bracket labels are truncated to 2 x (genes per group)
+    # characters, and the dendrogram is drawn on its own scale rather than in
+    # leaf coordinates, so it drifts out of register with the rows.
+    import matplotlib.pyplot as plt
+
+    ordered_groups = list(marker_genes_list.keys())
+    genes, spans, labels = [], [], []
+    for grp in ordered_groups:
+        block = [g for g in marker_genes_list[grp]]
+        if not block:
+            continue
+        spans.append((len(genes), len(genes) + len(block) - 1))
+        labels.append(str(grp))
+        genes.extend(block)
+    # A gene can be a top marker for two groups; the dot grid needs unique
+    # columns, so the later occurrence is dropped and its span shrinks.
+    seen, keep = set(), []
+    for j, g in enumerate(genes):
+        if g not in seen:
+            seen.add(g); keep.append(j)
+    if len(keep) != len(genes):
+        remap = {old_j: new_j for new_j, old_j in enumerate(keep)}
+        new_spans = []
+        for (a, b) in spans:
+            inside = [remap[j] for j in range(a, b + 1) if j in remap]
+            new_spans.append((min(inside), max(inside)) if inside else None)
+        spans = [sp for sp in new_spans if sp is not None]
+        labels = [lab for sp, lab in zip(new_spans, labels) if sp is not None]
+        genes = [genes[j] for j in keep]
+
+    mean_df, frac_df = _dotplot_matrices(
+        adata, groupby, genes, ordered_groups, layer=layer,
+        expression_cutoff=expression_cutoff,
     )
+    mean_df = _scale_means(mean_df, standard_scale)
+
+    linkage_matrix = None
+    if use_dendrogram:
+        linkage_matrix = adata.uns[dendro_key]["linkage"]
+
+    ax_out = _render_dotplot(
+        mean_df, frac_df, group_spans=spans, group_labels=labels,
+        swap_axes=swap_axes, cmap=cmap, linkage_matrix=linkage_matrix,
+        colorbar_title=("Scaled mean expression\nin group" if standard_scale
+                        else "Mean expression\nin group"),
+        **dotplot_kwargs,
+    )
+    if save:
+        # Unlike scanpy's `save`, this is a path, not a filename suffix that
+        # gets prefixed with figures/dotplot_.
+        ax_out.figure.savefig(save, dpi=dpi, bbox_inches="tight")
+    if show:
+        # Returning the axes here too made the default call print
+        # `<Axes: ...>` under every notebook cell -- and worse, implied the
+        # object was still useful after `plt.show()`, which for an inline
+        # backend it is not. `show=True` draws; `show=False` hands back the
+        # axes so the caller can keep drawing, which is what the `show`
+        # docstring has always promised. Matches the scanpy backend above,
+        # which already returned None.
+        plt.show()
+        return None
+    return ax_out
     
     
 #############Plot Marker Stream##########

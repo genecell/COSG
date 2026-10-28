@@ -2,7 +2,7 @@ from anndata import AnnData
 import numpy as np
 import pandas as pd
 from scipy import sparse
-from typing import Iterable, Union, Optional
+from typing import Iterable, Mapping, Sequence, Union, Optional
 
 
 
@@ -23,19 +23,30 @@ except ImportError:
         class Literal(metaclass=LiteralMeta):
             pass
 
-### Refer to Scanpy       
-def _select_top_n(scores, n_top):
-    reference_indices = np.arange(scores.shape[0], dtype=int)
-    partition = np.argpartition(scores, -n_top)[-n_top:]
-    partial_indices = np.argsort(scores[partition])[::-1]
-    global_indices = reference_indices[partition][partial_indices]
-    return global_indices
+from ._select import top_n
 
 from scipy.sparse import csr_matrix
 from sklearn.metrics.pairwise import cosine_similarity
 
 
 _CYTOME_DEFAULT = object()   # sentinel for cytome-only kwargs in cosg()
+
+#: How a "/" in a group label is written in the column names of the by-group
+#: frame, ``adata.uns[key]['COSG']``: h5ad and zarr keys cannot hold "/"
+#: (anndata 0.13 refuses to write them by default), so "L2/3 IT" is stored as
+#: "names::L2%2F3 IT". The record arrays (``names``, ``scores``, ...) keep the
+#: labels exactly, and :func:`indexByGene` reads "%2F" back as "/".
+_SLASH_IN_KEY = "%2F"
+
+
+def _key_safe(label) -> str:
+    """A group label as it can stand in an h5ad or zarr key: "/" as "%2F"."""
+    return str(label).replace("/", _SLASH_IN_KEY)
+
+
+def _label_from_key(key: str) -> str:
+    """The group label a key-safe name stands for: "%2F" back to "/"."""
+    return str(key).replace(_SLASH_IN_KEY, "/")
 
 
 def _is_anndata(obj):
@@ -91,6 +102,7 @@ _CYTOME_ONLY_KWARGS = (
     "modality", "cell_mask", "batch_size", "feature_batching",
     "min_total_count", "output_format", "compute_on_fly",
     "use_cached_stats", "iqr_normalize", "q_upper", "q_lower",
+    "iqr_fallback", "scale_rule",
 )
 
 
@@ -108,7 +120,7 @@ def _dispatch_to_cytome(
     # cytome-only kwargs (each may be _CYTOME_DEFAULT):
     modality, cell_mask, batch_size, feature_batching, min_total_count,
     output_format, compute_on_fly, use_cached_stats,
-    iqr_normalize, q_upper, q_lower,
+    iqr_normalize, q_upper, q_lower, iqr_fallback, scale_rule,
 ):
     """Internal: route from ``cosg.cosg(cytome_input, ...)`` to
     ``run_cosg_cytome``.
@@ -188,6 +200,8 @@ def _dispatch_to_cytome(
         ("use_cached_stats", use_cached_stats),
         ("iqr_normalize", iqr_normalize),
         ("q_upper", q_upper), ("q_lower", q_lower),
+        ("iqr_fallback", iqr_fallback),
+        ("scale_rule", scale_rule),
     ):
         if _val is not _CYTOME_DEFAULT:
             _fwd[_name] = _val
@@ -201,7 +215,7 @@ def cosg(
     groups: Union[Literal['all'], Iterable[str]] = 'all',
     mu: float = 1,
     remove_lowly_expressed: bool = True,
-    expressed_pct: Optional[float] = 0.1,
+    expressed_pct: Union[float, Mapping, Sequence[float], None] = 0.1,
     expressed_min_num_cells_in_target_group: int = 3,
     n_genes_user: int = 50,
     batch_key: str = None,
@@ -237,6 +251,8 @@ def cosg(
     iqr_normalize=_CYTOME_DEFAULT,
     q_upper=_CYTOME_DEFAULT,
     q_lower=_CYTOME_DEFAULT,
+    iqr_fallback=_CYTOME_DEFAULT,
+    scale_rule=_CYTOME_DEFAULT,
 ):
     """\
     Marker gene identification for single-cell sequencing data using COSG.
@@ -248,7 +264,7 @@ def cosg(
     groupby : str, default 'CellTypes'
         Key in `adata.obs` that defines the cell group labels. Defaults to 'CellTypes'.
     groups : {'all'} or iterable of str, default 'all'
-        Subset of cell groups, e.g. [`'g1'`, `'g2'`, `'g3'`], to which comparison shall be restricted. The default value is 'all', and all groups will be compared.
+        Subset of cell groups, e.g. [`'g1'`, `'g2'`, `'g3'`], to which comparison shall be restricted. The default value is 'all', and all groups will be compared. The result holds the groups compared, and only those with cells: a category of a categorical `groupby` that no cell carries (an unused one) is left out, as on the cytome paths.
     mu : float, default 1
         The penalty parameter restricting marker genes expressing in non-target cell groups. Larger value represents more strict restrictions. mu should be non-negative, and by default, mu = 1.
     remove_lowly_expressed : bool, default True
@@ -261,17 +277,29 @@ def cosg(
            recommended default for marker detection across both backends —
            pass ``remove_lowly_expressed=False`` explicitly if you need
            the previous unfiltered behaviour.
-    expressed_pct : float, optional, default 0.1
+    expressed_pct : float, dict, pandas.Series or sequence of float, optional, default 0.1
         When `remove_lowly_expressed` is set to True, genes that express a percentage of target cells smaller than a specific value (`expressed_pct`) are not considered as marker genes for the target cells. The default value for `expressed_pct` is 0.1 (10%).
+
+        The floor can also be set per group, since the share that suits an abundant, deeply sequenced type need not suit a rare or shallow one:
+
+        - a dict ``{group: fraction}`` or a pandas Series indexed by group. Every group with cells needs a fraction: a group left out raises rather than silently taking 0.1 (merge with a default yourself, ``{**{g: 0.1 for g in groups}, **fractions}``). A key that names no label of `groupby` raises; a key for a label left out by `groups` is ignored. Keys match labels as they are or by their string form, so ``{'3': 0.05}`` names cluster ``3``.
+        - a sequence with one fraction per group, in the order of the groups in the result: the categories of a categorical `groupby` that have cells among those scored (with `groups`, the ones selected), in their order, otherwise the labels sorted, numerically when they are all numbers.
+
+        Every fraction lies in [0, 1]. A group's fraction removes genes from that group's markers only, so its markers are the ones it gets with that fraction as the single floor. A fraction of 0 leaves its group the `expressed_min_num_cells_in_target_group` minimum alone, as ``expressed_pct=0`` does for every group, on every path; ``remove_lowly_expressed=False`` switches the filter off. The fractions used are recorded in ``adata.uns[key_added]['params']['expressed_pct']``: a number as given, fractions per group as a one-record array with a field per group, the form of ``names`` (``pd.DataFrame(rec).iloc[0]`` reads it as a Series). A table of per-type cell counts, such as a floor read from the data, is passed as ``(count - 0.5) / n_cells`` per type, so that the threshold is "count cells or more"; see :func:`cosg.run_cosg_cytome`.
+
+        Example: ``expressed_pct={'Microglia': 0.05, 'Astro': 0.1, 'Oligo': 0.1}``.
     expressed_min_num_cells_in_target_group : int, default 3
         When `remove_lowly_expressed` is set to True, this sets the minimum absolute 
         number of cells that must express a gene for it to be considered as a marker.
         The actual threshold used is the maximum of (`n_cells * expressed_pct`) and 
         this value. This prevents overly permissive thresholds in small clusters.
         For example, with a cluster of 10 cells and `expressed_pct=0.1`, the threshold
-        would be max(1, 3) = 3 cells instead of just 1 cell.
+        would be max(1, 3) = 3 cells instead of just 1 cell. A cell expresses a gene
+        when its value is not 0 (a stored zero does not count). COSGR, the R package,
+        applies `expressed_pct` alone, without this minimum, so for groups of fewer
+        than about 30 cells the two can report different markers.
     n_genes_user : int, default 50
-        The number of genes that appear in the returned tables. The default value is 50.
+        The number of genes that appear in the returned tables. The default value is 50. A number above the number of genes returns them all. Among genes with the same score, the one earlier in `var_names` comes first.
     batch_key : str, optional, default None
         Used to indicate which batch info in `adata.obs` to use for calculate the cosine similarities separately for each batch
         and then average them. The default value is None.
@@ -285,20 +313,23 @@ def cosg(
         If True, computes log fold-changes for the marker genes.
     calculate_pvalues : bool, default False
         Add analytic significance to the marker table -- `pvals`, `pvals_adj`,
-        `neg_log10_pvals`
+        `neg_log10_pvals`, `neg_log10_pvals_adj` and `zscores` alongside
+        `names` and `scores`. Default False leaves the output exactly as it was.
+
+        **Which column to use.** `pvals_adj` is the BH-corrected p-value and
+        is the one to threshold on. `neg_log10_pvals` is -log10 of the *raw*
+        p, kept because it can still rank markers whose p has underflowed to
+        the float64 floor -- a line drawn at 1.3 on that axis is raw 0.05,
+        not FDR 0.05. `neg_log10_pvals_adj` is the same quantity for the
+        adjusted p, computed in log space so it does not underflow either:
+        use it when you want a volcano axis that is safe to threshold.
         p-values are computed on the raw cosine, not the mu-regularized score:
         the null does not contain ``mu``, so the same gene keeps its p-value at
         any ``mu`` while its rank moves. With ``batch_key`` the null becomes
         stratified permutation and both the moments and the saddlepoint tail
-        are computed per stratum and combined.
-
-        Honest use: when ``groupby`` came from clustering this same matrix the
-        p-values are optimistic, because the labels were chosen to separate
-        these cells (post-selection inference). Labels from independent
-        information -- annotation, another modality, or a count split -- are
-        the valid cases.
-        and `zscores` alongside `names` and `scores`. Default False leaves the
-        output exactly as it was.
+        are computed per stratum and combined; a batch that holds none of a
+        group's cells, or nothing but them, carries no information about it
+        and is left out of its test.
 
         COSG's cosine specificity score is widely adopted across the
         single-cell field; this completes it with a significance layer
@@ -356,14 +387,13 @@ def cosg(
         Benjamini-Hochberg within each group, over that group's tested genes.
         Use 'fdr_by' (Benjamini-Yekutieli) for distribution-free control.
     use_raw : bool, default False
-        If True and `adata.raw` exists, raw UMI counts saved in `adata.raw.X` are used for calculations.
+        If True and `adata.raw` exists, raw UMI counts saved in `adata.raw.X` are used for calculations, and the genes reported are those of `adata.raw` (`adata.raw.var_names`), which usually holds more genes than `adata`. Without `adata.raw`, `adata.X` is used.
     layer : str, optional, default None
         Key in `adata.layers` to specify an alternative gene expression layer for COSG.
     reference : str, default 'rest'
-        Specifies the reference group for comparison. If `'rest'`, compare each group to the union of the rest of the group.
-        If a group identifier, compare with respect to this group.
+        The reference of the log fold changes (``calculate_logfoldchanges``): `'rest'` compares each group with the other cells scored; a label of `groupby` compares with that group's cells, also when `groups` leaves it out. It does not change COSG's scores, which always contrast a group with every other group scored.
     return_by_group : bool, default True
-        If True, the COSG scores are also summarized and stored separately by group in adata.uns[`key_added`]['COSG']. This will output another extra copy of the results. Defaults to True.
+        If True, the COSG scores are also summarized and stored separately by group in adata.uns[`key_added`]['COSG']. This will output another extra copy of the results. Defaults to True. A "/" in a group label is written as "%2F" in its column names ("names::L2%2F3 IT"), since h5ad and zarr keys cannot hold "/" (anndata 0.13 refuses to write them); the record arrays (``names``, ``scores``, ...) keep the labels exactly, and :func:`indexByGene` reads "%2F" back as "/".
     column_delimiter : str, default "::"
         Delimiter to use when combining multi-index column names for `adata.write()` compatibility. Default is "::".
     verbosity : int, default 0
@@ -390,9 +420,9 @@ def cosg(
         - None (default): Auto-select chunk size based on available RAM.
           Uses chunked cell-axis accumulation that processes cells in blocks,
           reducing peak memory by ~2x while improving speed by ~1.8x.
-        - 0: Use legacy CPU path (non-streaming). Required for batch_key mode.
-          Slower and uses more memory, but produces bit-identical results to
-          COSG versions prior to v1.2.
+        - 0: Use legacy CPU path (non-streaming). Slower and uses more
+          memory, but produces bit-identical results to COSG versions prior to
+          v1.2. ``batch_key`` works on every path, the default included.
         - N (positive int): Use N cells per chunk. Smaller chunks use less
           memory but may be slightly slower due to per-chunk overhead.
 
@@ -489,6 +519,8 @@ def cosg(
             iqr_normalize=iqr_normalize,
             q_upper=q_upper,
             q_lower=q_lower,
+            iqr_fallback=iqr_fallback,
+            scale_rule=scale_rule,
         )
 
     if not _is_anndata(adata):
@@ -511,6 +543,8 @@ def cosg(
             "use_cached_stats": use_cached_stats,
             "iqr_normalize": iqr_normalize,
             "q_upper": q_upper, "q_lower": q_lower,
+            "iqr_fallback": iqr_fallback,
+            "scale_rule": scale_rule,
         }.items() if v is not _CYTOME_DEFAULT
     }
     if _cytome_set:
@@ -521,9 +555,9 @@ def cosg(
             f"path / open cytome Dataset as the first argument instead."
         )
 
-    ### Validate the input parameter mu
-    if mu < 0:
-        raise ValueError("Parameter mu must be non-negative.")
+    ### Validate the input parameter mu (NaN made every score NaN)
+    if not (np.isfinite(mu) and mu >= 0):
+        raise ValueError(f"Parameter mu must be a non-negative number, got {mu!r}.")
 
     ### Resolve device backend
     from ._backend import get_device
@@ -563,14 +597,28 @@ def cosg(
     # Validate n_genes_user
     if n_genes_user < 1:
         raise ValueError("n_genes_user must be at least 1.")
+
+    # Validate the chunk sizes: None (automatic), 0 (see the docstring) or a
+    # positive number of cells
+    for _name, _val in (("gpu_chunk_size", gpu_chunk_size), ("cpu_chunk_size", cpu_chunk_size)):
+        if _val is not None and not (float(_val).is_integer() and _val >= 0):
+            raise ValueError(f"{_name} must be None or a whole number >= 0, got {_val!r}.")
+
+    # Validate the p-value method before anything is computed
+    if calculate_pvalues and pvalue_method not in ('spa', 'normal', 'exact', 'permutation'):
+        raise ValueError(
+            f"pvalue_method={pvalue_method!r} is not one of "
+            "'spa', 'normal', 'exact', 'permutation'")
     
-    # Validate expressed_pct
-    if expressed_pct is not None and not (0 <= expressed_pct <= 1):
-        raise ValueError("expressed_pct must be between 0 and 1.")
+    # Validate expressed_pct: a number, or a fraction per group (matched to
+    # the groups once they are known, below)
+    from ._floor import check_expressed_pct
+    check_expressed_pct(expressed_pct)
         
-    # Validate expressed_min_num_cells_in_target_group
-    if expressed_min_num_cells_in_target_group < 1:
-        raise ValueError("expressed_min_num_cells_in_target_group must be at least 1.")
+    # Validate expressed_min_num_cells_in_target_group: 0 is valid, as on the
+    # cytome paths and in score_from_sums (with a floor of 0 it filters nothing)
+    if not expressed_min_num_cells_in_target_group >= 0:
+        raise ValueError("expressed_min_num_cells_in_target_group must be at least 0.")
     
     # Validate layer exists if specified
     if layer is not None and layer not in adata.layers:
@@ -581,61 +629,62 @@ def cosg(
     
     adata = adata.copy() if copy else adata
 
+    # The matrix scored and the names of its columns come from the same place:
+    # adata.raw usually holds more genes than adata (every gene, against the
+    # variable ones), so naming raw's columns by adata.var_names reported the
+    # gene at the same position of the narrower table (COSG 1.0.4 to 1.2.0).
     if layer is not None:
         if use_raw:
             raise ValueError("Cannot specify `layer` and have `use_raw = True`.")
         cellxgene = adata.layers[layer]
+        feature_names = adata.var_names
     else:
         if use_raw and adata.raw is not None:
-             cellxgene = adata.raw.X
+            cellxgene = adata.raw.X
+            feature_names = adata.raw.var_names
         else:
             cellxgene = adata.X
-    
-    
-    ### Refer to scanpy's framework
-    # https://github.com/theislab/scanpy/blob/5533b644e796379fd146bf8e659fd49f92f718cd/scanpy/tools/_rank_genes_groups.py#L559
-    if key_added is None:
-        key_added = 'cosg'
-    adata.uns[key_added] = {}
-    adata.uns[key_added]['params'] = dict(
-        groupby=groupby,
-        reference=reference,
-        groups=groups,
-        batch_key=batch_key,
-        method='COSG',
-        use_raw=use_raw,
-        layer=layer,
-        mu=mu,
-        remove_lowly_expressed=remove_lowly_expressed,  
-        expressed_pct=expressed_pct, 
-        expressed_min_num_cells_in_target_group=expressed_min_num_cells_in_target_group, 
-    )
-    
+            feature_names = adata.var_names
+
+
     ### Refer to: https://github.com/theislab/scanpy/blob/5533b644e796379fd146bf8e659fd49f92f718cd/scanpy/tools/_rank_genes_groups.py#L543
+    labels_all = adata.obs[groupby]
     if groups == 'all':
-        ### group lable for each cell
-        group_info=adata.obs[groupby]
-    elif isinstance(groups, (str, int)):
-        raise ValueError('Specify a sequence of groups')
+        cells_selected = None
+        group_info = labels_all
     else:
-        cells_selected=adata.obs[groupby].isin(groups)
-        cells_selected=cells_selected.values
+        cells_selected = labels_all.isin(groups).values
         if sparse.issparse(cellxgene):
-            cellxgene=cellxgene[cells_selected]
+            cellxgene = cellxgene[cells_selected]
         else:
-            cellxgene=cellxgene[cells_selected,:]
-            
-            
+            cellxgene = cellxgene[cells_selected, :]
+        group_info = labels_all[cells_selected]
 
-        ### group lable for each cell
-        group_info=adata.obs[groupby].copy()
-        group_info=group_info[cells_selected]
-        
+    # Finite values only: a NaN made its gene the top marker of every group
+    # whose floor kept it, with the score NaN, on the default path.
+    from ._validate import check_finite_matrix
+    check_finite_matrix(
+        cellxgene, feature_names,
+        what=(f"adata.layers['{layer}']" if layer is not None
+              else "adata.raw.X" if (use_raw and adata.raw is not None) else "adata.X"))
 
-    
-    ### Use the categorical orders if it is a categorical variable
+    # Every cell scored needs a label: a missing one raised a KeyError (a
+    # categorical) or a TypeError (strings) deep inside.
+    _unlabelled = int(np.asarray(group_info.isna()).sum())
+    if _unlabelled:
+        raise ValueError(
+            f"{_unlabelled} of the {len(group_info)} cells scored have no label in "
+            f"adata.obs['{groupby}'] (NaN or None). Label them, or leave them out: "
+            f"adata[adata.obs['{groupby}'].notna()], or groups=[...].")
+
+    ### The groups are the labels of the cells scored: for a categorical, its
+    ### categories in their order, those with cells only. A category without
+    ### cells (an unused one, or one that `groups` leaves out) has no markers;
+    ### it used to come back with arbitrary genes, scored 0 or -1 depending on
+    ### the path, and the store paths left it out already.
     if hasattr(group_info, "cat"):
-        groups_order = list(group_info.cat.categories)
+        _present = set(pd.unique(np.asarray(group_info, dtype=object)))
+        groups_order = [c for c in group_info.cat.categories if c in _present]
     else:
         unique_values=group_info.unique()
         ### add a helper function here, if the cell clusters are "1", "2", ... , "10", "11", ...
@@ -644,16 +693,14 @@ def cosg(
             try:
                 [float(x) for x in groups]
                 return True
-            except ValueError:
+            except (ValueError, TypeError):
                 return False
 
         if _is_all_numeric(unique_values):
             groups_order = sorted(unique_values, key=lambda x: float(x))
         else:
             groups_order = sorted(unique_values)
-        
-    
-    
+
     n_cluster=len(groups_order)
 
     n_cell=cellxgene.shape[0]
@@ -665,9 +712,44 @@ def cosg(
     data = np.ones_like(col_indices, dtype=int)
     cluster_mat = csr_matrix((data, (row_indices, col_indices)), shape=(n_cluster, n_cell))
 
+    ### The detection floor of each group, in the order of groups_order. A
+    ### dict or Series is matched to the labels here, before anything is
+    ### written or computed; every path below applies floors[k] to group k.
+    from ._floor import resolve_expressed_pct, floor_record_array
+    _labels_col = adata.obs[groupby]
+    _known_labels = (list(_labels_col.cat.categories) if hasattr(_labels_col, "cat")
+                     else list(pd.unique(_labels_col)))
+    expressed_pct_per_group, _floor_per_group = resolve_expressed_pct(
+        expressed_pct, groups_order,
+        group_sizes=np.asarray(cluster_mat.sum(axis=1)).ravel(),
+        known_labels=_known_labels)
+
+    ### Refer to scanpy's framework
+    # https://github.com/theislab/scanpy/blob/5533b644e796379fd146bf8e659fd49f92f718cd/scanpy/tools/_rank_genes_groups.py#L559
+    # The result is built here and stored in adata.uns at the end, so a call
+    # that fails leaves an earlier result under the same key as it was.
+    if key_added is None:
+        key_added = 'cosg'
+    result = {}
+    result['params'] = dict(
+        groupby=groupby,
+        reference=reference,
+        groups=groups,
+        batch_key=batch_key,
+        method='COSG',
+        use_raw=use_raw,
+        layer=layer,
+        mu=mu,
+        remove_lowly_expressed=remove_lowly_expressed,
+        # a number as given; a fraction per group as a one-record array with
+        # a field per group, like 'names' (a dict keyed by a label holding
+        # '/' does not survive adata.write)
+        expressed_pct=(floor_record_array(groups_order, expressed_pct_per_group)
+                       if _floor_per_group else expressed_pct),
+        expressed_min_num_cells_in_target_group=expressed_min_num_cells_in_target_group,
+    )
+
     # ── GPU path ─────────────────────────────────────────────────────────
-    _gpu_full_path = False  # flag: True when gpu_core_cosg_full() is used
-    _gpu_chunked_path = False  # flag: True when gpu_core_cosg_chunked() is used
     _cpu_streaming_used = False  # flag: True when cpu_core_cosg_chunked() is used
     if _device == 'gpu':
         from ._gpu import (gpu_core_cosg, gpu_core_cosg_batched,
@@ -692,27 +774,31 @@ def cosg(
                 verbosity=verbosity
             )
         else:
-            # Decide: chunked streaming vs monolithic
-            use_chunked = (gpu_chunk_size is not None or
-                           _should_use_chunked(n_cell, cellxgene.shape[1],
-                                               sparse.issparse(cellxgene), cellxgene))
+            # Decide: chunked streaming vs monolithic. 0 or n_cells force the
+            # monolithic transfer, as documented (0 raised ZeroDivisionError).
+            if gpu_chunk_size == 0 or (gpu_chunk_size is not None and gpu_chunk_size >= n_cell):
+                use_chunked = False
+            elif gpu_chunk_size is not None:
+                use_chunked = True
+            else:
+                use_chunked = _should_use_chunked(n_cell, cellxgene.shape[1],
+                                                  sparse.issparse(cellxgene), cellxgene)
             if use_chunked:
                 genexlambda = gpu_core_cosg_chunked(
                     cellxgene, cluster_mat, mu,
                     is_sparse_input=sparse.issparse(cellxgene),
                     remove_lowly_expressed=remove_lowly_expressed,
-                    expressed_pct=expressed_pct if expressed_pct is not None else 0.1,
+                    expressed_pct=expressed_pct_per_group,
                     expressed_min_num_cells_in_target_group=expressed_min_num_cells_in_target_group,
                     chunk_size=gpu_chunk_size,
                     verbosity=verbosity
                 )
-                _gpu_chunked_path = True
             else:
                 genexlambda = gpu_core_cosg(
                     cellxgene, cluster_mat, mu,
                     is_sparse_input=sparse.issparse(cellxgene),
                     remove_lowly_expressed=remove_lowly_expressed,
-                    expressed_pct=expressed_pct if expressed_pct is not None else 0.1,
+                    expressed_pct=expressed_pct_per_group,
                     expressed_min_num_cells_in_target_group=expressed_min_num_cells_in_target_group,
                     verbosity=verbosity
                 )
@@ -729,7 +815,7 @@ def cosg(
                 cellxgene, cluster_mat, mu,
                 is_sparse_input=sparse.issparse(cellxgene),
                 remove_lowly_expressed=remove_lowly_expressed,
-                expressed_pct=expressed_pct if expressed_pct is not None else 0.1,
+                expressed_pct=expressed_pct_per_group,
                 expressed_min_num_cells_in_target_group=expressed_min_num_cells_in_target_group,
                 chunk_size=cpu_chunk_size,  # None = auto
                 verbosity=verbosity
@@ -780,20 +866,23 @@ def cosg(
                 accum += sim_batch
                 valid_counts += valid_mask
 
+            # a group too small in every batch has no evidence: 0
             for j in range(n_cluster):
                 if valid_counts[j] > 0:
                     accum[:, j] /= valid_counts[j]
                 else:
-                    accum[:, j] = np.nan
+                    accum[:, j] = 0.0
 
             cosine_sim = accum
-            cosine_sim_clean = np.nan_to_num(cosine_sim, nan=0.0)
+            cosine_sim_clean = cosine_sim
             genexlambda = _apply_cosg_penalty_cpu(cosine_sim_clean, mu)
 
-            # Apply expressed_pct filter using chunked nnz computation
+            # Apply expressed_pct filter using chunked nnz computation:
+            # each group's own threshold, max(N_k * pct_k, min_cells), on its
+            # own column
             if remove_lowly_expressed:
                 from ._cpu_streaming import cpu_nnz_counts_chunked
-                _ept = expressed_pct if expressed_pct is not None else 0.1
+                from ._floor import floor_thresholds
 
                 nnz_counts = cpu_nnz_counts_chunked(
                     cellxgene, cluster_mat,
@@ -803,13 +892,11 @@ def cosg(
                 )
 
                 group_sizes = np.array(cluster_mat.sum(axis=1)).ravel()
+                thresholds = floor_thresholds(
+                    group_sizes, expressed_pct_per_group,
+                    expressed_min_num_cells_in_target_group)
                 for k in range(n_cluster):
-                    n_cells_k = group_sizes[k]
-                    threshold = max(
-                        n_cells_k * _ept,
-                        expressed_min_num_cells_in_target_group
-                    )
-                    genexlambda[nnz_counts[:, k] < threshold, k] = -1
+                    genexlambda[nnz_counts[:, k] < thresholds[k], k] = -1
                 del nnz_counts
 
             _cpu_streaming_used = True
@@ -864,9 +951,10 @@ def cosg(
                     accum = accum + sim_batch_valid
                     valid_counts += valid_mask
 
-                # Create a diagonal matrix for column-wise division.
-                # For clusters with valid_counts==0, we assign np.nan.
-                divisor = np.array([1/v if v > 0 else np.nan for v in valid_counts])
+                # Create a diagonal matrix for column-wise division. A group
+                # too small in every batch has no evidence: 0, as on the
+                # streaming and GPU batch paths.
+                divisor = np.array([1/v if v > 0 else 0.0 for v in valid_counts])
                 divisor_diag = sparse.diags(divisor)
                 # Multiply accumulator by divisor_diag to scale each column appropriately.
                 accum = accum.dot(divisor_diag)
@@ -891,11 +979,15 @@ def cosg(
                     sim_batch = sim_batch * valid_mask  # broadcasting valid_mask along columns
                     accum += sim_batch
                     valid_counts += valid_mask
+                # A group too small in every batch has no evidence: 0, as on
+                # the streaming and GPU batch paths. It was NaN, and the
+                # penalty's row sums carried that NaN into every group's score
+                # (NaN sorts first, so the "markers" were arbitrary).
                 for j in range(n_cluster):
                     if valid_counts[j] > 0:
                         accum[:, j] /= valid_counts[j]
                     else:
-                        accum[:, j] = np.nan  # or zero if you prefer
+                        accum[:, j] = 0.0
                 cosine_sim = accum
 
         else:
@@ -952,33 +1044,37 @@ def cosg(
         ### Whether to calculate logfoldchanges, because this is required in scanpy 1.8
         anndata_obj = None  # Initialize before conditional creation
         if calculate_logfoldchanges:
-            ### Calculate basic stats
-            ### Refer to Scanpy
-            # for clarity, rename variable
-            if groups == 'all':
-                groups_order2 = 'all'
-            elif isinstance(groups, (str, int)):
-                raise ValueError('Specify a sequence of groups')
-            else:
-                groups_order2 = list(groups)
-                if isinstance(groups_order2[0], int):
-                    groups_order2 = [str(n) for n in groups_order2]
-                if reference != 'rest' and reference not in set(groups_order2):
-                    groups_order2 += [reference]
-            if reference != 'rest' and reference not in adata.obs[groupby].cat.categories:
-                cats = adata.obs[groupby].cat.categories.tolist()
-                raise ValueError(
-                    f'reference = {reference} needs to be one of groupby = {cats}.'
-                )
-            pts=False
-            anndata_obj = _RankGenes(adata, groups_order2, groupby, reference, use_raw, layer, pts)
+            # The fold changes describe the groups scored, in their order: each
+            # against the other cells scored ('rest'), or against `reference`,
+            # which must be one of them. They used to be computed over every
+            # category of a categorical groupby, so `groups=` raised an
+            # IndexError, and a groupby that was not categorical raised an
+            # AttributeError.
+            _labels = np.asarray(labels_all, dtype=object)
+            _fc_groups = list(groups_order)
+            if reference != 'rest' and reference not in _fc_groups:
+                # a reference outside `groups` is compared with, not scored (as
+                # in scanpy's rank_genes_groups); it must be a label of groupby
+                if not (_labels == reference).any():
+                    raise ValueError(
+                        f'reference = {reference} needs to be one of the labels of '
+                        f'groupby = {groupby!r}.')
+                _fc_groups.append(reference)
+            _masks = np.array([_labels == g for g in _fc_groups], dtype=bool)
+            anndata_obj = _RankGenes(adata, _fc_groups, _masks, reference, use_raw, layer,
+                                     scored_mask=cells_selected)
             anndata_obj._basic_stats()
 
 
         ### Refer to Scanpy
         # for correct getnnz calculation
         ### get non-zeros for columns
-        _skip_downstream_filter = (_device == 'gpu') or (_device != 'gpu' and _cpu_streaming_used)
+        # The GPU paths apply the floor on the device -- except the batch path
+        # (gpu_core_cosg_batched), which counts no nonzeros, so its floor is
+        # applied here, as after the CPU's cpu_chunk_size=0 batch path. It used
+        # to be skipped with the others, and that path filtered nothing.
+        _skip_downstream_filter = ((_device == 'gpu' and batch_key is None)
+                                   or (_device != 'gpu' and _cpu_streaming_used))
         if not _skip_downstream_filter:
             # Count true nonzeros without mutating the input matrix
             # This avoids eliminate_zeros() which would modify adata.X in-place
@@ -996,19 +1092,17 @@ def cosg(
         results_pvals_adj = {} if calculate_pvalues else None
         results_zscores = {} if calculate_pvalues else None
         results_neglog10 = {} if calculate_pvalues else None
+        results_neglog10_adj = {} if calculate_pvalues else None
 
         pvals_matrix = zscores_matrix = None
         if calculate_pvalues:
-            from ._pvalues import analytic_pvalues, adjust_fdr
+            from ._pvalues import analytic_pvalues, adjust_fdr, adjust_fdr_log
 
-            if pvalue_method not in ('spa', 'normal', 'exact', 'permutation'):
-                raise ValueError(
-                    f"pvalue_method={pvalue_method!r} is not one of "
-                    "'spa', 'normal', 'exact', 'permutation'")
             _batch_vec = None
             if batch_key is not None:
-                _batch_vec = adata.obs[batch_key].values[cells_selected] \
-                    if 'cells_selected' in dir() else adata.obs[batch_key].values
+                _batch_vec = adata.obs[batch_key].values
+                if cells_selected is not None:
+                    _batch_vec = _batch_vec[cells_selected]
             if pvalue_method == 'permutation':
                 from ._pvalues import permutation_pvalues
                 pvals_matrix = permutation_pvalues(
@@ -1016,6 +1110,7 @@ def cosg(
                     batch=_batch_vec)
                 zscores_matrix = np.zeros_like(pvals_matrix)
                 _neglog10 = -np.log10(np.clip(pvals_matrix, 1e-300, 1.0))
+                _logp_matrix = None
             else:
                 pvals_matrix, zscores_matrix, _pv_info = analytic_pvalues(
                     cellxgene, group_info.values, groups_order,
@@ -1025,8 +1120,9 @@ def cosg(
                 # of a clean cell type's top markers reach the float64 floor
                 # (~1e-308) and every one then reads as the same number, so
                 # `pvals` alone cannot rank them.
-                _neglog10 = (-_pv_info["log_p"] / np.log(10.0)
-                             if "log_p" in _pv_info else
+                _logp_matrix = _pv_info.get("log_p")
+                _neglog10 = (-_logp_matrix / np.log(10.0)
+                             if _logp_matrix is not None else
                              -np.log10(np.clip(pvals_matrix, 1e-300, 1.0)))
                 if verbosity > 0:
                     print(
@@ -1048,7 +1144,8 @@ def cosg(
                 scores = genexlambda[:, order_i]
 
             if remove_lowly_expressed and not _skip_downstream_filter:
-                # GPU and CPU streaming paths already applied expressed_pct filter internally
+                # The CPU streaming paths and the GPU paths other than the
+                # batch path have applied the expressed_pct filter already
                 n_cells_expressed = get_nonzeros(cellxgene[idx_i])
                 n_cells_i = np.sum(idx_i)
 
@@ -1061,17 +1158,20 @@ def cosg(
                             f"All genes will be filtered out for this group."
                         )
 
-                # Use the maximum of percentage-based and absolute minimum threshold
+                # Use the maximum of percentage-based and absolute minimum
+                # threshold, with this group's own fraction
                 threshold = max(
-                    n_cells_i * expressed_pct,
+                    n_cells_i * expressed_pct_per_group[order_i],
                     expressed_min_num_cells_in_target_group
                 )
                 scores[n_cells_expressed < threshold] = -1
 
-            global_indices = _select_top_n(scores, n_genes_user)
+            # one selector on every path: the n best by score, ties by index;
+            # n_genes_user beyond the number of genes returns them all
+            global_indices = top_n(scores, n_genes_user)
 
             # Store results in dictionaries instead of concatenating DataFrames
-            results_names[group_i] = adata.var_names.values[global_indices]
+            results_names[group_i] = np.asarray(feature_names)[global_indices]
             results_scores[group_i] = scores[global_indices]
 
             if calculate_pvalues:
@@ -1083,13 +1183,26 @@ def cosg(
                 col = pvals_matrix[:, order_i]
                 adj_full = np.full(col.shape, np.nan)
                 adj_full[tested] = adjust_fdr(col[tested], pvalue_fdr_method)
+                # BH again, but in log space: `pvals_adj` flushes to 0 for
+                # every marker whose raw p already did, so it cannot rank
+                # them. log p_adj = cummin(log p + log(m/rank)) is the same
+                # number without ever exponentiating.
+                if _logp_matrix is not None:
+                    lcol = _logp_matrix[:, order_i]
+                    ladj_full = np.full(lcol.shape, np.nan)
+                    ladj_full[tested] = adjust_fdr_log(lcol[tested],
+                                                       pvalue_fdr_method)
+                    _neglog10_adj = -ladj_full / np.log(10.0)
+                else:
+                    _neglog10_adj = -np.log10(np.clip(adj_full, 1e-300, 1.0))
                 results_pvals[group_i] = col[global_indices]
                 results_pvals_adj[group_i] = adj_full[global_indices]
                 results_zscores[group_i] = zscores_matrix[global_indices, order_i]
                 results_neglog10[group_i] = _neglog10[global_indices, order_i]
+                results_neglog10_adj[group_i] = _neglog10_adj[global_indices]
 
             if calculate_logfoldchanges and anndata_obj is not None:
-                group_index = np.where(anndata_obj.groups_order == group_i)[0][0]
+                group_index = order_i
                 if anndata_obj.means is not None:
                     mean_group = anndata_obj.means[group_index]
                     mean_rest = (
@@ -1114,6 +1227,7 @@ def cosg(
                 columns_data[(group_i, 'pvals_adj')] = results_pvals_adj[group_i]
                 columns_data[(group_i, 'zscores')] = results_zscores[group_i]
                 columns_data[(group_i, 'neg_log10_pvals')] = results_neglog10[group_i]
+                columns_data[(group_i, 'neg_log10_pvals_adj')] = results_neglog10_adj[group_i]
         rank_stats = pd.DataFrame(columns_data)
 
     #### also return a copy of the results showing the results by group
@@ -1123,13 +1237,15 @@ def cosg(
         rank_stats_swapped.columns = rank_stats_swapped.columns.swaplevel()
         
         # Create a new DataFrame with flattened column names using the specified delimiter
-        # Format: attribute::cell_group
-        flattened_columns = [column_delimiter.join(map(str, col)) for col in rank_stats_swapped.columns]
+        # Format: attribute::cell_group, with a "/" in the group written as "%2F"
+        # (h5ad and zarr keys cannot hold "/"; indexByGene reads it back)
+        flattened_columns = [column_delimiter.join((str(attr), _key_safe(group)))
+                             for attr, group in rank_stats_swapped.columns]
         cosg_results = rank_stats_swapped.copy()
         cosg_results.columns = flattened_columns
         
         # Store with flattened column names for compatibility with adata.write
-        adata.uns[key_added]['COSG'] = cosg_results
+        result['COSG'] = cosg_results
     
     
     ## Refer to scanpy
@@ -1144,13 +1260,15 @@ def cosg(
             'pvals_adj': 'float64',
             'zscores': 'float64',
             'neg_log10_pvals': 'float64',
+            'neg_log10_pvals_adj': 'float64',
     }
     
     rank_stats.columns = rank_stats.columns.swaplevel()
     for col in rank_stats.columns.levels[0]:
-        adata.uns[key_added][col]=rank_stats[col].to_records(
+        result[col]=rank_stats[col].to_records(
             index=False, column_dtypes=dtypes[col]
         )
+    adata.uns[key_added] = result
         
     if verbosity>0:    
         print(f"Finished identifying marker genes by COSG, and the results are in adata.uns['{key_added}'].")
@@ -1177,7 +1295,9 @@ def indexByGene(
     ----
     This function is designed for reindexing COSG's output stored in `adata.uns['cosg']['COSG']`.
     It works with the flattened column format where attribute and cell group are joined by a delimiter
-    in the format 'attribute{delimiter}cell_group'.
+    in the format 'attribute{delimiter}cell_group'. A "/" in a group label, which that frame writes as
+    "%2F" (h5ad and zarr keys cannot hold "/"), is read back as "/", so the columns of the result are
+    the labels themselves; a frame from an earlier version, with "/" in its column names, reads the same.
     It is recommended to set `n_genes_user=adata.n_vars` when calling the `cosg.cosg` function to ensure 
     that scores for all genes are returned.
     
@@ -1247,7 +1367,8 @@ def indexByGene(
     # Create results DataFrame
     df_scores = pd.DataFrame(index=all_genes)
     
-    # Fill in scores for each cell group
+    # Fill in scores for each cell group, under the group's label ("%2F" read
+    # back as "/")
     for cell_group in cell_groups:
         gene_col = f"{gene_key}{column_delimiter}{cell_group}"
         score_col = f"{score_key}{column_delimiter}{cell_group}"
@@ -1256,7 +1377,8 @@ def indexByGene(
             # Create a temporary gene-to-score mapping
             gene_to_score = dict(zip(df[gene_col], df[score_col]))
             # Populate the scores column
-            df_scores[cell_group] = df_scores.index.map(lambda x: gene_to_score.get(x, float('nan')))
+            df_scores[_label_from_key(cell_group)] = df_scores.index.map(
+                lambda x: gene_to_score.get(x, float('nan')))
     
     # Apply optional transformations
     if set_nan_to_zero:
@@ -1274,7 +1396,9 @@ def indexByGene(
 def iqrLogNormalize(
     df: pd.DataFrame,
     q_upper: float = 0.95,
-    q_lower: float = 0.75
+    q_lower: float = 0.75,
+    iqr_fallback: str = "positive",
+    scale_rule: str = "iqr",
 ):
     """
     Applies an IQR-based scaling to a DataFrame followed by a log1p transformation.
@@ -1282,8 +1406,22 @@ def iqrLogNormalize(
     The function computes the interquartile range (IQR) for each column as the difference 
     between the q_upper and q_lower quantiles. Each column is then divided by its respective IQR.
     
-    If any IQR value is zero, it is replaced with the smallest nonzero IQR found among all columns.
-    If all IQR values are zero, a replacement value of 1e-6 is used.
+    A column whose IQR is zero keeps a scale of its own: its q_upper quantile when that is
+    positive, and otherwise, when the column is above zero at fewer than 1 - q_upper of the
+    rows (a cell type that opens a few percent of the peaks or tiles, say), the 5th percentile
+    of the column's positive values, where the IQR reaches as that share falls to 1 - q_upper.
+    1e-6 is used only for a column with no positive value. The streaming paths of
+    ``run_cosg_cytome`` scale with the same rule.
+
+    The quantiles are taken over the rows given. Pass every feature (``cosg.indexByGene`` on
+    the full score table, or ``run_cosg_cytome(..., output_format='dense')``) for the scale over
+    all features; on a table of each group's top markers only, the scale is a different one.
+
+    .. versionchanged:: 1.2.1
+        A zero IQR was replaced with the smallest nonzero IQR among the other columns, so
+        such a column took another column's scale; the streaming paths used 1e-6 when the
+        q_upper quantile was zero. Both now follow the rule above, which changes the
+        normalized scores of those columns only.
     
     Optionally, the log1p-transformed result can be further scaled using min–max normalization 
     to rescale the values to the [0, 1] range (applied per column).
@@ -1296,6 +1434,18 @@ def iqrLogNormalize(
         The upper quantile used for IQR calculation.
     q_lower : float, optional, default=0.75
         The lower quantile used for IQR calculation.
+    iqr_fallback : {'positive', 'smallest'}, default 'positive'
+        The scale of a column whose IQR is zero: ``'positive'``, its own, as
+        described above; ``'smallest'``, the smallest nonzero IQR among the
+        columns (1e-6 if there is none), the rule of COSG 1.2.0 and earlier, to
+        reproduce scores computed with them.
+    scale_rule : {'iqr', 'positive_median'}, default 'iqr'
+        ``'iqr'``: the rule above. ``'positive_median'``: each column's scale is the median
+        of its positive values, for sparse features (peaks, tiles), where most cell types
+        score above zero at 5 to 25 % of the rows and the IQR is set by how many rows score
+        at all more than by the column's own scores. ``iqr_fallback`` is then not used.
+
+        .. versionadded:: 1.2.1
       
     Returns
     -------
@@ -1312,7 +1462,7 @@ def iqrLogNormalize(
     Example
     -------
     >>> ## cosg_df is a DataFrame with gene scores, output from the cosg.indexByGene function
-    >>> cosg_df_transformed = iqr_log_normalize(cosg_df, q_upper=0.95, q_lower=0.75)
+    >>> cosg_df_transformed = iqrLogNormalize(cosg_df, q_upper=0.95, q_lower=0.75)
     """
     # Validate input type
     if not isinstance(df, pd.DataFrame):
@@ -1322,14 +1472,32 @@ def iqrLogNormalize(
     if not (0 <= q_lower < q_upper <= 1):
         raise ValueError("q_lower must be >= 0 and less than q_upper, and q_upper must be <= 1.")
     
+    from ._from_sums import _check_iqr_fallback, _check_scale_rule, _group_scale, _pooled_positive_median
+    _check_iqr_fallback(iqr_fallback, ("positive", "smallest"))
+    _check_scale_rule(scale_rule)
+    if scale_rule == "positive_median":
+        cols = {c: np.nan_to_num(df[c].to_numpy(dtype=float), nan=0.0) for c in df.columns}
+        pooled = _pooled_positive_median(cols.values())
+        scale = pd.Series({c: _group_scale(v, scale_rule="positive_median", pooled_median=pooled)
+                           for c, v in cols.items()})
+        return np.log1p(df / scale)
+
     # Compute the IQR for each column
     iqr = df.quantile(q_upper) - df.quantile(q_lower)
-    
-    # Replace zero IQR values with the smallest nonzero IQR (or 1e-6 if all are zero)
-    if (iqr == 0).any():
-        nonzero_iqr = iqr[iqr > 0]
-        replacement_value = nonzero_iqr.min() if not nonzero_iqr.empty else 1e-6
-        iqr = iqr.replace(0, replacement_value)
+
+    if iqr_fallback == "smallest":
+        if (iqr <= 0).any():
+            nonzero_iqr = iqr[iqr > 0]
+            replacement_value = nonzero_iqr.min() if not nonzero_iqr.empty else 1e-6
+            iqr = iqr.replace(0, replacement_value)
+    else:
+        # every column by the rule of the streaming paths: its spread, floored
+        # at the 5th percentile of its positive values while its q_lower
+        # quantile is zero, and that percentile when the spread is zero (QC doc 52)
+        iqr = iqr.astype(float)
+        for c in iqr.index:
+            v = df[c].to_numpy(dtype=float)
+            iqr[c] = _group_scale(v[~np.isnan(v)], q_upper, q_lower)
     
     # Scale the DataFrame by dividing each column by its corresponding IQR
     df_iqr_scaled = df / iqr
@@ -1347,53 +1515,6 @@ def iqrLogNormalize(
 ####
 ###
 
-
-
-### Import from Scanpy
-def select_groups(adata, groups_order_subset='all', key='groups'):
-    """Get subset of groups in adata.obs[key]."""
-    groups_order = adata.obs[key].cat.categories
-    if key + '_masks' in adata.uns:
-        groups_masks = adata.uns[key + '_masks']
-    else:
-        groups_masks = np.zeros(
-            (len(adata.obs[key].cat.categories), adata.obs[key].values.size), dtype=bool
-        )
-        for iname, name in enumerate(adata.obs[key].cat.categories):
-            # if the name is not found, fallback to index retrieval
-            if adata.obs[key].cat.categories[iname] in adata.obs[key].values:
-                mask = adata.obs[key].cat.categories[iname] == adata.obs[key].values
-            else:
-                mask = str(iname) == adata.obs[key].values
-            groups_masks[iname] = mask
-    groups_ids = list(range(len(groups_order)))
-    if groups_order_subset != 'all':
-        groups_ids = []
-        for name in groups_order_subset:
-            groups_ids.append(
-                np.where(adata.obs[key].cat.categories.values == name)[0][0]
-            )
-        if len(groups_ids) == 0:
-            # fallback to index retrieval
-            groups_ids = np.where(
-                np.in1d(
-                    np.arange(len(adata.obs[key].cat.categories)).astype(str),
-                    np.array(groups_order_subset),
-                )
-            )[0]
-        if len(groups_ids) == 0:
-            raise ValueError(
-                f'{np.array(groups_order_subset)} invalid! Specify valid '
-                f'groups_order (or indices) from {adata.obs[key].cat.categories}'
-            )
-#             from sys import exit
-
-#             exit(0)
-        groups_masks = groups_masks[groups_ids]
-        groups_order_subset = adata.obs[key].cat.categories[groups_ids].values
-    else:
-        groups_order_subset = groups_order.values
-    return groups_order_subset, groups_masks
 
 
 ### Import from Scanpy   
@@ -1504,14 +1625,21 @@ def sparse_mean_var_major_axis(data, indices, indptr, major_len, minor_len, dtyp
 
 ### Import from Scanpy
 class _RankGenes:
+    """Group means for the fold changes, after scanpy's ``_RankGenes``.
+
+    ``groups_order`` and ``groups_masks`` (one boolean mask over all cells per
+    group) are the groups COSG scored; ``scored_mask`` the cells scored (None:
+    all). A group's rest is the other cells scored, or ``reference``.
+    """
     def __init__(
         self,
         adata,
-        groups,
-        groupby,
+        groups_order,
+        groups_masks,
         reference='rest',
         use_raw=True,
         layer=None,
+        scored_mask=None,
         comp_pts=False,
     ):
 
@@ -1520,14 +1648,13 @@ class _RankGenes:
         else:
             self.expm1_func = np.expm1
 
-        self.groups_order, self.groups_masks = select_groups(
-            adata, groups, groupby
-        )
+        self.groups_order = np.asarray(list(groups_order), dtype=object)
+        self.groups_masks = np.asarray(groups_masks, dtype=bool)
+        self.scored_mask = None if scored_mask is None else np.asarray(scored_mask, dtype=bool)
 
         # Singlet groups cause division by zero errors
-        invalid_groups_selected = set(self.groups_order) & set(
-            adata.obs[groupby].value_counts().loc[lambda x: x < 2].index
-        )
+        invalid_groups_selected = [str(g) for g, m in zip(self.groups_order, self.groups_masks)
+                                   if m.sum() < 2]
 
         if len(invalid_groups_selected) > 0:
             raise ValueError(
@@ -1551,7 +1678,7 @@ class _RankGenes:
 
         self.ireference = None
         if reference != 'rest':
-            self.ireference = np.where(self.groups_order == reference)[0][0]
+            self.ireference = int(np.flatnonzero(self.groups_order == reference)[0])
 
         self.means = None
         self.vars = None
@@ -1564,10 +1691,6 @@ class _RankGenes:
         self.pts_rest = None
 
         self.stats = None
-
-        # for logreg only
-        self.grouping_mask = adata.obs[groupby].isin(self.groups_order)
-        self.grouping = adata.obs.loc[self.grouping_mask, groupby]
 
     def _basic_stats(self):
         n_genes = self.X.shape[1]
@@ -1607,7 +1730,8 @@ class _RankGenes:
             self.means[imask], self.vars[imask] = _get_mean_var(X_mask)
 
             if self.ireference is None:
-                mask_rest = ~mask
+                # the other cells scored (all other cells when all are scored)
+                mask_rest = ~mask if self.scored_mask is None else (self.scored_mask & ~mask)
                 X_rest = self.X[mask_rest]
                 self.means_rest[imask], self.vars_rest[imask] = _get_mean_var(X_rest)
                 # this can be costly for sparse data

@@ -135,3 +135,39 @@ def test_default_layer_does_not_import_piaso():
         break
     else:
         pytest.fail("_resolve_chunk_normalizer not found")
+
+
+def _row_loop(chunk, cell_depth_chunk, scale_factor):
+    """The row loop the vectorized form replaced, verbatim."""
+    cd = np.asarray(cell_depth_chunk, dtype=np.float64)
+    cd = np.where(cd == 0, 1.0, cd)
+    scale = float(scale_factor)
+    out = chunk.copy().astype(np.float32)
+    if not sp.isspmatrix_csr(out):
+        out = out.tocsr()
+    for i in range(out.shape[0]):
+        start, end = out.indptr[i], out.indptr[i + 1]
+        if end > start:
+            out.data[start:end] = out.data[start:end] / cd[i] * scale
+    np.log1p(out.data, out=out.data)
+    return out
+
+
+@pytest.mark.parametrize("seed", range(6))
+def test_the_vectorized_scaling_is_the_row_loop_to_the_bit(seed):
+    rng = np.random.default_rng(seed)
+    chunk = _chunk(seed=seed, n_cells=300, n_genes=80, density=0.2)
+    chunk = sp.vstack([chunk, sp.csr_matrix((3, 80), dtype=np.float32)]).tocsr()   # empty rows
+    for depth in (np.asarray(chunk.sum(axis=1)).ravel(),
+                  rng.uniform(1, 5e4, chunk.shape[0]),                         # non-integer depths
+                  np.r_[np.zeros(5), rng.integers(1, 9000, chunk.shape[0] - 5)]):
+        for scale in (1e4, 1e6, 3.7):
+            got = normalize_chunk_log1p(chunk, depth, scale)
+            want = _row_loop(chunk, depth, scale)
+            np.testing.assert_array_equal(got.indptr, want.indptr)
+            np.testing.assert_array_equal(got.indices, want.indices)
+            assert got.data.dtype == want.data.dtype == np.float32
+            assert got.data.tobytes() == want.data.tobytes()
+    csc = _chunk(seed=seed).tocsc()                                           # other formats too
+    d = np.asarray(csc.sum(axis=1)).ravel()
+    assert normalize_chunk_log1p(csc, d, 1e4).data.tobytes() == _row_loop(csc, d, 1e4).data.tobytes()

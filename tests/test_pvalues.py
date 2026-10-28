@@ -699,7 +699,8 @@ def test_pvalue_block_does_not_depend_on_the_device_argument():
     assigns = [l.strip() for l in src.splitlines() if l.strip().startswith("cellxgene =")]
     assert assigns, "cellxgene assignment not found"
     for line in assigns:
-        assert "adata" in line, (
+        # from adata, or a row subset of the matrix already taken from it
+        assert "adata" in line or line.replace(" ", "").startswith("cellxgene=cellxgene["), (
             f"cellxgene is assigned from something other than adata ({line!r}); "
             "if it can become a device array the p-value path needs a transfer")
 

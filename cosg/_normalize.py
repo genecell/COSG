@@ -23,6 +23,15 @@ import numpy as np
 from scipy import sparse as sp
 
 
+# The precision of the row scaling below. It was a loop over rows,
+# ``data[row] / cd[i] * scale`` with ``cd[i]`` a numpy float64 scalar, so numpy
+# chose it by its scalar promotion rule: float32 arithmetic under numpy 1's
+# value-based casting, float64 under NEP 50 (numpy 2), rounded to float32 when
+# stored. The vectorized form uses the same dtype, so it gives the loop's
+# numbers to the bit under either numpy.
+_ROW_SCALE_DTYPE = (np.zeros(1, dtype=np.float32) / np.float64(1.0)).dtype
+
+
 def normalize_chunk_log1p(chunk, cell_depth_chunk, scale_factor):
     """Per-chunk ``log1p(chunk / cell_depth * scale_factor)``.
 
@@ -52,12 +61,13 @@ def normalize_chunk_log1p(chunk, cell_depth_chunk, scale_factor):
         out = chunk.copy().astype(np.float32)
         if not sp.isspmatrix_csr(out):
             out = out.tocsr()
-        # Row-scale through the indptr rather than building a diagonal
-        # matrix -- no intermediate the size of the chunk.
-        for i in range(out.shape[0]):
-            start, end = out.indptr[i], out.indptr[i + 1]
-            if end > start:
-                out.data[start:end] = out.data[start:end] / cd[i] * scale
+        # Row-scale the stored values, each by its row's depth, in one
+        # vectorized pass (a Python loop over the rows cost a second per
+        # column chunk of a million cells on the column-major scan), with the
+        # loop's arithmetic: see _ROW_SCALE_DTYPE.
+        work = _ROW_SCALE_DTYPE
+        depth = np.repeat(cd.astype(work), np.diff(out.indptr))
+        out.data[:] = out.data.astype(work, copy=False) / depth * work.type(scale)
         # log1p(0) == 0, so operating on .data leaves the sparsity structure
         # untouched.
         np.log1p(out.data, out=out.data)

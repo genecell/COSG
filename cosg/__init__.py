@@ -31,6 +31,9 @@ Renames in the cytome streaming API:
 """
 
 from .cosg import cosg, indexByGene, iqrLogNormalize
+# COSG's scores from per-group sums: the last step of every streaming path,
+# for sums added up elsewhere (count-split halves, shards, added cells).
+from ._from_sums import score_from_sums
 from ._backend import HAS_CUPY
 from ._backend import HAS_CUPY as _HAS_GPU
 
@@ -54,7 +57,7 @@ try:
 except ImportError:
     pass
 
-__version__ = "1.2.0"
+__version__ = "1.2.1"
 
 __all__ = [
     'cosg',
@@ -69,6 +72,7 @@ __all__ = [
     'plotMarkerStream',
     'run_cosg_cytome',
     'run_cosg_cytome_gpu',
+    'score_from_sums',
     # run_cosg_cytome_cpu is intentionally NOT in __all__ — it's a
     # migration-aid stub that raises TypeError at call time. Listed
     # here as a comment so removal is a conscious decision.

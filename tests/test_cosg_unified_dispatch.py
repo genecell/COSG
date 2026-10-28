@@ -220,25 +220,24 @@ def test_run_cosg_cytome_device_auto_resolves(tmp_path):
 
 
 @requires_cytome
-def test_run_cosg_cytome_device_gpu_with_sparse_output_raises(tmp_path):
-    """device='gpu' + output_format != 'ndarray' is unsupported. The
-    function must raise NotImplementedError BEFORE doing any work,
-    naming both kwargs in the message. This test runs regardless of
-    CuPy availability — the rejection happens at the dispatch layer."""
+def test_run_cosg_cytome_device_gpu_with_sparse_output_matches_the_cpu(tmp_path):
+    """device='gpu' + output_format != 'ndarray' used to be refused: the GPU
+    path had post-processing of its own. It now shares the CPU's, so every
+    output format comes back, and agrees with the CPU to float32 rounding.
+    (tests/test_gpu_store_path.py runs the same on numpy standing in for CuPy.)"""
     from cosg._backend import HAS_CUPY
     if not HAS_CUPY:
         pytest.skip("No CuPy — the device='gpu' code path is not reachable.")
     import cosg
     ds = _build_rna_cytome(tmp_path / "x.cytome")
     ds.close()
-    with pytest.raises(NotImplementedError) as exc:
-        cosg.run_cosg_cytome(
-            str(tmp_path / "x.cytome"), groupby="Leiden", n_genes_user=3,
-            remove_lowly_expressed=False, verbose=False,
-            device="gpu", output_format="dict",
-        )
-    assert "device='gpu'" in str(exc.value)
-    assert "ndarray" in str(exc.value)
+    kw = dict(groupby="Leiden", n_genes_user=3, remove_lowly_expressed=False, verbose=False,
+              output_format="dict")
+    gpu = cosg.run_cosg_cytome(str(tmp_path / "x.cytome"), device="gpu", **kw)
+    cpu = cosg.run_cosg_cytome(str(tmp_path / "x.cytome"), device="cpu", **kw)
+    assert set(gpu["scores_dict"]) == set(cpu["scores_dict"])
+    for k, v in cpu["scores_dict"].items():
+        assert gpu["scores_dict"][k] == pytest.approx(v, rel=1e-4, abs=1e-6)
 
 
 @requires_cytome

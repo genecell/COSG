@@ -126,11 +126,14 @@ def test_run_cosg_cytome_ga_modality_picks_GA_markers(tmp_path):
     )
     names = result["names"]
     groups = list(result["groups_order"])
-    # names is a structured array — the top marker for each group
-    # should match the pattern (Olig2 for g2, Nestin for g0, Tubb3 for g1)
-    g0_top = names[groups.index("g0")][0]
-    g1_top = names[groups.index("g1")][0]
-    g2_top = names[groups.index("g2")][0]
+    # names is (n_genes_user, n_groups): the top marker of each group is the
+    # first row of its column, and should match the pattern (Olig2 for g2,
+    # Nestin for g0, Tubb3 for g1). This read row k of the first column, which
+    # held the expected genes only by the order argpartition gave the tied
+    # zero scores.
+    g0_top = names[0, groups.index("g0")]
+    g1_top = names[0, groups.index("g1")]
+    g2_top = names[0, groups.index("g2")]
     assert g0_top == "Nestin", f"g0 top should be Nestin, got {g0_top}"
     assert g1_top == "Tubb3", f"g1 top should be Tubb3, got {g1_top}"
     assert g2_top == "Olig2", f"g2 top should be Olig2, got {g2_top}"
@@ -155,7 +158,7 @@ def test_run_cosg_cytome_default_layer_is_counts(tmp_path):
         verbose=False,
     )
     # Default layer='counts' — Sox2 is the g0 marker per the pattern
-    g0_top = result["names"][list(result["groups_order"]).index("g0")][0]
+    g0_top = result["names"][0, list(result["groups_order"]).index("g0")]
     assert g0_top == "Sox2"
 
 
@@ -187,7 +190,7 @@ def test_run_cosg_cytome_materialized_log1p_layer(tmp_path):
     )
     # If we read RNA_log1p, the g0 marker should be Foxg1 (per the fake
     # pattern); if we wrongly fell back to counts, it would be Sox2.
-    g0_top = result["names"][list(result["groups_order"]).index("g0")][0]
+    g0_top = result["names"][0, list(result["groups_order"]).index("g0")]
     assert g0_top == "Foxg1", (
         f"Materialised-layer read failed: g0 top should be Foxg1 (from "
         f"RNA_log1p), got {g0_top} (looks like the counts matrix was read)."

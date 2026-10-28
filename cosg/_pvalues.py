@@ -43,17 +43,23 @@ fixed at 1/2. Every evaluation costs O(k) -- the zero-valued cells enter the
 count constraint in closed form -- so the method is cheapest exactly where
 genes are sparsest.
 
-Three regimes, chosen internally
---------------------------------
+Two regimes, chosen internally
+------------------------------
 ``pvalue_method='spa'`` (the default) is adaptive:
 
 * **normal** where the tail is irrelevant -- a null gene reading 0.30 rather
   than 0.35 changes nothing, and the normal approximation is excellent there;
-* **saddlepoint** once the normal p is small or the expected in-group
-  expressing count is low;
-* **exact enumeration** for genes with very few expressing cells, where the
-  null is a small discrete mixture and an exact answer is cheaper than any
-  approximation to it.
+* **saddlepoint** once the normal p is small or, for a group of more than
+  half the cells, the expected in-group expressing count is low; below a
+  normal p of 1e-30 only for sparse genes, whose normal p is wrong by orders
+  of magnitude there.
+
+No p is reported below the permutation floor, 1 / prod_b C(n_b, n_c,b): the
+probability of the observed labeling itself, which bounds the tail from
+below.
+
+The exact conditional tail (``pvalue_method='exact'``) is opt-in: it is the
+oracle the saddlepoint is checked against, not part of ``'spa'``.
 
 What the p-value is not
 -----------------------
@@ -76,7 +82,8 @@ from scipy import sparse
 from scipy.special import expit, ndtr, log_expit, log_ndtr
 
 from ._pvalue_atoms import (atoms_from_columns, spa_atoms_tail,
-                            values_are_integral, exact_tail_atoms)
+                            values_are_integral, exact_tail_atoms,
+                            exact_tail_bounded)
 
 __all__ = [
     "srswor_moments_from_sums",
@@ -87,6 +94,7 @@ __all__ = [
     "analytic_pvalues",
     "permutation_pvalues",
     "adjust_fdr",
+    "adjust_fdr_log",
 ]
 
 _SQRT2PI = np.sqrt(2.0 * np.pi)
@@ -203,24 +211,6 @@ def _exact_tail(values, n, n_c, t, tol=1e-12):
 # ---------------------------------------------------------------------------
 # Conditional (double) saddlepoint
 # ---------------------------------------------------------------------------
-
-def _solve_u(values, n_zero, s, n_c, u0):
-    """Solve ``sum sigma(s*x + u) = n_c`` for ``u`` (monotone increasing)."""
-    u = u0
-    for _ in range(80):
-        p_nz = expit(s * values + u)
-        p_z = expit(u)
-        f = p_nz.sum() + n_zero * p_z - n_c
-        d = (p_nz * (1.0 - p_nz)).sum() + n_zero * p_z * (1.0 - p_z)
-        if d <= 1e-300:
-            break
-        step = f / d
-        step = np.clip(step, -4.0, 4.0)
-        u -= step
-        if abs(step) < 1e-12:
-            break
-    return u
-
 
 def _solve_saddle_bracketed(values, n_zero, n_c, t, u0):
     """Bracket-and-bisect on ``s``, solving ``u`` inside. Slow but sure.
@@ -400,7 +390,6 @@ def analytic_pvalues(
     groups_order,
     batch=None,
     method: str = "spa",
-    exact_max_expressing: int = 16,
     spa_normal_p: float = 0.05,
     spa_min_expected: float = 30.0,
     spa_min_p: float = 1e-30,
@@ -423,7 +412,19 @@ def analytic_pvalues(
         sums and the three moments add across strata.
     method
         ``'spa'`` (adaptive, default), ``'normal'`` (no tail refinement), or
-        ``'exact'`` (enumeration wherever affordable, else SPA).
+        ``'exact'`` (the exact conditional tail on integer values where its
+        table is affordable and its cut cannot matter, else the saddlepoint).
+    spa_normal_p
+        Entries whose normal p is at most this are refined.
+    spa_min_expected
+        For a group of more than half the cells, entries whose expected
+        number of expressing cells in the group is below this are refined
+        whatever their normal p.
+    spa_min_p
+        Below this normal p (1e-30) only sparse entries (fewer than
+        ``spa_min_expected`` expressing cells expected in the group) are
+        refined; 0 refines every flagged entry. Every p is then held at or
+        above the permutation floor, 1 / prod_b C(n_b, n_c,b).
     """
     # Do NOT convert up front. COSG hands this a CSR matrix; population_moments
     # wants CSR (bincount over column indices) and only the per-gene value
@@ -450,22 +451,34 @@ def analytic_pvalues(
     strata = [np.ones(n, dtype=bool)] if batch is None else [
         np.asarray(batch) == b for b in np.unique(np.asarray(batch))
     ]
+    # The smallest p the permutation null can give a group: the probability of
+    # one labeling, 1 / prod_b C(n_b, n_c,b) over the strata that inform it.
+    log_floor = np.zeros(n_groups, dtype=np.float64)
 
+    # A stratum informs the test of a group only when it holds some of the
+    # group's cells and some other cells. One with none of them, or with
+    # nothing else, has a fixed sum under the within-stratum permutation null
+    # (0, or the stratum's total), so it is left out of the statistic, its
+    # mean and its variance together; the saddlepoint below leaves out the
+    # same strata. Adding such a stratum's sum to T without its mean -- what
+    # this did for a group alone in its batch -- shifted T by that total and
+    # made every gene expressed there a marker (p near 1e-80 on null data).
     for mask in strata:
-        if mask.sum() < 3:
-            continue
-        Xs = X[mask]
         nb = int(mask.sum())
-        mean_b, s2_b, _ = population_moments(Xs)
-        Tb = group_sums(Xs, labels[mask], groups_order)
-        T += Tb
         nc_b = np.array([(labels[mask] == g).sum() for g in groups_order],
                         dtype=np.float64)
-        for j, nc in enumerate(nc_b):
-            if nc <= 0 or nc >= nb:
-                continue
+        informative = np.flatnonzero((nc_b > 0) & (nc_b < nb))
+        if informative.size == 0:
+            continue
+        Xs = X[mask]
+        mean_b, s2_b, _ = population_moments(Xs)
+        Tb = group_sums(Xs, labels[mask], groups_order)
+        for j in informative:
+            nc = nc_b[j]
+            T[:, j] += Tb[:, j]
             E[:, j] += nc * mean_b
             V[:, j] += nc * (nb - nc) / (nb - 1) * s2_b
+            log_floor[j] -= _log_binom(nb, nc)
 
     sd = np.sqrt(V)
     with np.errstate(invalid="ignore", divide="ignore"):
@@ -481,7 +494,7 @@ def analytic_pvalues(
         log_P = np.where(sd > 0, log_ndtr(-Z), 0.0)
     info["log_p"] = log_P
     if method == "normal":
-        return P, Z, info
+        return _at_least_the_floor(P, Z, info, log_P, log_floor)
 
     # The values are read once, as atoms: the saddlepoint sees a gene only
     # through sums over its value multiset, so k individual cells and their
@@ -496,8 +509,8 @@ def analytic_pvalues(
     # from CSR's column indices avoids building CSC for the decision itself --
     # only the rows that survive it need per-gene values.
     if sparse.issparse(X):
-        counts = np.bincount(X.indices, minlength=n_genes) if sparse.isspmatrix_csr(X) \
-            else np.diff(X.tocsc().indptr)
+        _Xr = X if sparse.isspmatrix_csr(X) else X.tocsr()
+        counts = np.bincount(_Xr.indices[_Xr.data != 0], minlength=n_genes)
     else:
         counts = (X != 0).sum(axis=0)
 
@@ -516,20 +529,25 @@ def analytic_pvalues(
     big_group = n_c_all > (n / 2.0)
     refine = (P <= spa_normal_p) | (big_group[None, :] & (expected_in_group < spa_min_expected))
     refine &= (sd > 0) & (T > E)
-    # Deep in the tail the saddlepoint stops being a measurement. At |z| ~ 20
-    # a 1e-7 relative change in T moves the answer from 7.6e-121 to 1.0e-122,
-    # and not monotonically: that is the Newton solve's numerical floor, not
-    # the data speaking. Refinement is worth doing where it can still change a
-    # decision; below `spa_min_p` every route agrees the gene is significant
-    # beyond any threshold anyone sets, so the normal value stands and no
-    # noise is manufactured to sit under it.
-    refine &= P >= spa_min_p
+    # Below a normal p of `spa_min_p` (1e-30) an entry is refined only when it
+    # is sparse: fewer than `spa_min_expected` expressing cells expected in the
+    # group. There the normal p is wrong by orders of magnitude and the
+    # saddlepoint is not: a gene in 12 cells, all of a 100-cell group of
+    # 5,000, had a normal log10 p of -129.7 against an exact -20.7 (the
+    # saddlepoint: -20.2), and every such entry used to keep the normal value.
+    # A dense gene that deep keeps its normal p: it is too small as well
+    # (40 to 110 orders at |z| 20 to 50), but no decision depends on it, and
+    # at the most extreme |z| the saddlepoint's solve can fail to converge.
+    # Every p is then held at or above the permutation floor (see below).
+    # `spa_min_p=0` refines every flagged entry.
+    if spa_min_p > 0:
+        refine &= (P >= spa_min_p) | (expected_in_group < spa_min_expected)
     rows, cols = np.nonzero(refine)
     if verbosity > 0 and rows.size:
         print(f"COSG p-values: refining {rows.size} of {P.size} tail entries "
               f"({'integer lattice' if integral else 'continuous'})")
     if rows.size == 0:
-        return P, Z, info
+        return _at_least_the_floor(P, Z, info, log_P, log_floor)
 
     genes_needed = np.unique(rows)
     strata = ([np.arange(n)] if batch is None else
@@ -580,7 +598,10 @@ def analytic_pvalues(
             h_max = int(min(k, nc, eh + 10.0 * np.sqrt(max(eh, 1.0)) + 25))
             if h_max <= 0 or av.max() * h_max > exact_max_table:
                 continue
-            p_ex = exact_tail_atoms(av, aw, n, int(nc), float(T[gi, cj]), h_max)
+            # None where the table's cut at h_max could matter (a strong
+            # marker's tail lies past it, and came back as 0): the
+            # saddlepoint takes those entries
+            p_ex = exact_tail_bounded(av, aw, n, int(nc), float(T[gi, cj]), h_max)
             if p_ex is not None:
                 P[gi, cj] = p_ex
                 log_P[gi, cj] = np.log(max(p_ex, np.finfo(np.float64).tiny))
@@ -598,6 +619,10 @@ def analytic_pvalues(
         for r, (gi, cj) in enumerate(spa_pairs):
             for b, (idx, aset, pmap, ncb) in enumerate(
                     zip(strata, atom_sets, pos_maps, nc_by_stratum)):
+                # the strata the statistic T leaves out (none of the group's
+                # cells, or nothing else): their sum is fixed under the null
+                if not (0.0 < ncb[cj] < idx.size):
+                    continue
                 j = pmap.get(gi)
                 if j is None:
                     continue
@@ -620,6 +645,7 @@ def analytic_pvalues(
                 np.asarray(nc_l, dtype=np.float64),
                 np.asarray(t_l, dtype=np.float64),
                 lattice=integral)
+            failed = []
             for r, (gi, cj) in enumerate(spa_pairs):
                 if okvec[r]:
                     P[gi, cj] = pvec[r]
@@ -628,16 +654,45 @@ def analytic_pvalues(
                     info["n_normal"] -= 1
                 else:
                     info["n_spa_failed"] += 1
-    if info["n_spa_failed"] and verbosity >= 0:
-        warnings.warn(
-            f"COSG p-values: {info['n_spa_failed']} of {len(spa_pairs)} refined "
-            "entries did not converge and kept their normal-approximation "
-            "p-value, which is anti-conservative in exactly that regime. "
-            "Report this (dataset shape, group sizes) — it should not happen.",
-            stacklevel=2)
+                    failed.append((gi, cj))
+            # A refinement fails where the group holds (nearly) the gene's top
+            # values, so the observed sum sits at the edge of what the null can
+            # produce and the tilt diverges. There the normal p can fall below
+            # the permutation floor, which is the exact p at the edge; the floor
+            # below takes those entries. Only failures it does not explain are
+            # reported.
+            unexplained = sum(1 for gi, cj in failed if log_P[gi, cj] >= log_floor[cj])
+            if unexplained and verbosity >= 0:
+                warnings.warn(
+                    f"COSG p-values: {unexplained} of {len(spa_pairs)} refined "
+                    "entries did not converge and kept their normal-approximation "
+                    "p-value, which is anti-conservative in exactly that regime. "
+                    "Report this (dataset shape, group sizes) — it should not happen.",
+                    stacklevel=2)
 
+    return _at_least_the_floor(P, Z, info, log_P, log_floor)
+
+
+def _log_binom(n, k):
+    """log C(n, k), natural."""
+    from scipy.special import gammaln
+    return float(gammaln(n + 1.0) - gammaln(k + 1.0) - gammaln(n - k + 1.0))
+
+
+def _at_least_the_floor(P, Z, info, log_P, log_floor):
+    """No p below the smallest the permutation null can give (one labeling of
+    the group's cells, ``log_floor`` per group): a normal p deep in the tail,
+    or one whose refinement failed at the edge of the null's support, can be
+    hundreds of orders below it. Then ``P`` floored at the smallest positive
+    float64 and ``log p`` capped at 0, as before."""
+    floor = np.broadcast_to(np.asarray(log_floor, dtype=np.float64)[None, :], log_P.shape)
+    below = log_P < floor
+    info["n_floored"] = int(below.sum())
+    if below.any():
+        log_P = np.where(below, floor, log_P)
+        P = np.where(below, np.exp(floor), P)
     tiny = np.finfo(np.float64).tiny
-    np.clip(P, tiny, 1.0, out=P)
+    P = np.clip(P, tiny, 1.0)
     info["log_p"] = np.minimum(log_P, 0.0)
     return P, Z, info
 
@@ -690,22 +745,43 @@ def adjust_fdr(p, method: str = "fdr_bh"):
     return out
 
 
+def adjust_fdr_log(log_p, method: str = "fdr_bh"):
+    """Benjamini-Hochberg entirely in log space.
+
+    BH multiplies each ordered p by ``m * factor / rank`` and takes a running
+    minimum from the largest downwards. Both steps commute with a monotone
+    log, so ``log p_adj = cummin(log p + log(m * factor / rank))`` is the
+    *exact* adjusted value -- and it stays exact where ``p`` itself has
+    underflowed to zero, which is the regime the analytic route exists for
+    (a third of a clean cell type's top markers reach the float64 floor).
+
+    ``log_p`` is a NATURAL log, matching ``analytic_pvalues``' ``log_p``.
+    Returns natural-log adjusted values, capped at ``log(1) = 0``.
+    """
+    lp = np.asarray(log_p, dtype=np.float64)
+    finite = np.isfinite(lp)
+    out = np.full(lp.shape, np.nan)
+    vals = lp[finite]
+    m = vals.size
+    if m == 0:
+        return out
+    order = np.argsort(vals)
+    ranked = vals[order]
+    factor = 1.0
+    if method == "fdr_by":
+        factor = np.sum(1.0 / np.arange(1, m + 1))
+    adj = ranked + np.log(m * factor) - np.log(np.arange(1, m + 1))
+    adj = np.minimum.accumulate(adj[::-1])[::-1]
+    np.clip(adj, -np.inf, 0.0, out=adj)
+    res = np.empty(m)
+    res[order] = adj
+    out[finite] = res
+    return out
+
+
 # ---------------------------------------------------------------------------
 # Driver
 # ---------------------------------------------------------------------------
-
-#: Below this expected number of expressing cells inside the group, the normal
-#: approximation is not trustworthy in the tail. This is the criterion that
-#: matters -- not the gene's global expressing count, which can be in the
-#: hundreds while the expected in-group count is 2.
-_MIN_EXPECTED_IN_GROUP = 30.0
-
-#: Normal p at or below this gets the saddlepoint treatment regardless.
-_TAIL_TRIGGER = 1e-2
-
-#: Genes expressed in at most this many cells are enumerated exactly.
-_EXACT_MAX_K = 14
-
 
 def compute_pvalues(
     X,
@@ -728,9 +804,10 @@ def compute_pvalues(
     if method == "permutation":
         P = permutation_pvalues(X, labels, groups_order,
                                 n_permutations=n_permutations,
-                                random_seed=random_seed, verbosity=verbosity)
+                                random_seed=random_seed, batch=batch)
         _, Z, info = analytic_pvalues(X, labels, groups_order, batch=batch,
                                       method="normal", verbosity=0)
+        info["log_p"] = np.log(P)          # the permutation p's, not the normal ones
     elif method in ("spa", "normal", "exact"):
         P, Z, info = analytic_pvalues(X, labels, groups_order, batch=batch,
                                       method=method, verbosity=verbosity)
@@ -787,7 +864,7 @@ def srswor_moments_from_sums(s1, s2, s3, n):
 
 
 def normal_tail(T, n_c_all, n, mean, s2, m3, k_nonzero=None, method="spa",
-                tail_trigger=0.05, min_expected=30.0, min_p=1e-30):
+                tail_trigger=0.05, min_expected=30.0, min_p=1e-30, return_log=False):
     """Normal-approximation p and z, plus the entries whose tail needs more.
 
     Returns ``(P, Z, flagged)`` where ``flagged`` is an ``(m, 2)`` array of
@@ -796,6 +873,10 @@ def normal_tail(T, n_c_all, n, mean, s2, m3, k_nonzero=None, method="spa",
     global expressing count: a gene in 200 of 50,000 cells against a 500-cell
     group expects 2, and a criterion that looked at 200 would wave it through
     while the normal p at a nominal 1e-5 is really 1.8e-3.
+
+    ``return_log=True`` adds a fourth array, the natural log of ``P`` computed
+    in log space (``log_ndtr``), which keeps ranking where ``P`` itself has
+    underflowed to 0, as ``analytic_pvalues``' ``info['log_p']`` does.
     """
     T = np.asarray(T, dtype=np.float64)
     n_c_all = np.asarray(n_c_all, dtype=np.float64).ravel()
@@ -807,9 +888,13 @@ def normal_tail(T, n_c_all, n, mean, s2, m3, k_nonzero=None, method="spa",
     with np.errstate(divide="ignore", invalid="ignore"):
         Z = np.where(sd > 0, (T - E) / np.where(sd > 0, sd, 1.0), 0.0)
     P = np.where(sd > 0, _sf(Z), 1.0)
+    log_P = np.where(sd > 0, log_ndtr(-Z), 0.0) if return_log else None
+
+    def _out(flagged):
+        return (P, Z, flagged, log_P) if return_log else (P, Z, flagged)
 
     if method == "normal" or k_nonzero is None:
-        return P, Z, np.empty((0, 2), dtype=int)
+        return _out(np.empty((0, 2), dtype=int))
 
     k = np.asarray(k_nonzero, dtype=np.float64).ravel()
     expected_in_group = np.outer(k, n_c_all) / max(float(n), 1.0)
@@ -820,12 +905,13 @@ def normal_tail(T, n_c_all, n, mean, s2, m3, k_nonzero=None, method="spa",
     # smaller than half the cells.
     big_group = np.asarray(n_c_all, dtype=np.float64) > (float(n) / 2.0)
     needs = ((P <= tail_trigger)
-             | (big_group[None, :] & (expected_in_group < min_expected))) & (T > E)
-    # See `analytic_pvalues`: past this depth the refinement is numerical noise
-    # and both paths keep the normal value, which also keeps them in agreement.
-    needs &= P >= min_p
+             | (big_group[None, :] & (expected_in_group < min_expected))) & (T > E) & (sd > 0)
+    # As in `analytic_pvalues`, which keeps the two paths refining the same
+    # entries: below `min_p` only sparse entries are refined.
+    if min_p > 0:
+        needs &= (P >= min_p) | (expected_in_group < min_expected)
     flagged = np.argwhere(needs)
-    return P, Z, flagged
+    return _out(flagged)
 
 
 def refine_tail(values, n, n_c, t, method="spa", exact_max_expressing=16):
@@ -840,133 +926,9 @@ def refine_tail(values, n, n_c, t, method="spa", exact_max_expressing=16):
 
 
 # ---------------------------------------------------------------------------
-# Stratified saddlepoint
+# A second saddlepoint solver on raw values, stratified by blocks: the tests
+# check spa_atoms_tail against it
 # ---------------------------------------------------------------------------
-
-def _solve_u_stratum(s, values, n_zero, n_c, u0=0.0, iters=60):
-    """``sum sigma(s*x + u) = n_c`` within one stratum. Monotone -> guarded Newton."""
-    lo, hi, u = -80.0, 80.0, float(u0)
-    for _ in range(iters):
-        p_nz = expit(s * values + u)
-        p_z = expit(u)
-        f = float(p_nz.sum() + n_zero * p_z) - n_c
-        if abs(f) < 1e-11:
-            break
-        d = float((p_nz * (1.0 - p_nz)).sum() + n_zero * p_z * (1.0 - p_z))
-        if f > 0:
-            hi = u
-        else:
-            lo = u
-        u_new = u - f / d if d > 1e-300 else 0.5 * (lo + hi)
-        if not (lo < u_new < hi):
-            u_new = 0.5 * (lo + hi)
-        if abs(u_new - u) < 1e-14:
-            u = u_new
-            break
-        u = u_new
-    return u
-
-
-def spa_tail_stratified(strata_values, strata_nzero, strata_nc, t,
-                        max_iter=80):
-    """``P(T >= t)`` under a *stratified* permutation null.
-
-    Labels are permuted within stratum, so ``T = sum_b T_b`` with the strata
-    independent. The joint CGF is ``sum_b K_b``: one tilt ``s`` shared across
-    strata, and a separate ``u_b`` per stratum enforcing that stratum's group
-    size. Given ``s`` each ``u_b`` solves independently and monotonically, so
-    the outer problem stays one dimensional however many strata there are, and
-    the Hessian is an arrow matrix whose determinant is a Schur complement.
-
-    Refining a stratified null with the unstratified formula is not a smaller
-    correction; it answers a different question, and it errs in the direction
-    that matters, because the batch structure it ignores is exactly what
-    inflates the tail.
-    """
-    B = len(strata_values)
-    n_b = [len(v) + z for v, z in zip(strata_values, strata_nzero)]
-    n_tot = sum(n_b)
-    if not B or sum(strata_nc) <= 0 or sum(strata_nc) >= n_tot:
-        return None
-
-    # Denominator (s = 0): each stratum tilts to its own logit(n_c / n).
-    u_den, K_den, Kuu_den = [], 0.0, []
-    for nb, nc in zip(n_b, strata_nc):
-        if nb <= 0 or nc <= 0 or nc >= nb:
-            return None
-        ub = float(np.log(nc / (nb - nc)))
-        u_den.append(ub)
-        K_den += float(np.logaddexp(0.0, ub)) * nb
-        pi = 1.0 / (1.0 + np.exp(-ub))
-        Kuu_den.append(nb * pi * (1.0 - pi))
-    if any(k <= 0 for k in Kuu_den):
-        return None
-
-    def state(s, u_start):
-        us, Ks, Kss, schur, Kuu_all, Knum = [], 0.0, 0.0, 0.0, [], 0.0
-        for b in range(B):
-            v, z, nc = strata_values[b], strata_nzero[b], strata_nc[b]
-            ub = _solve_u_stratum(s, v, z, nc, u_start[b])
-            us.append(ub)
-            pi = expit(s * v + ub)
-            pi0 = expit(ub)
-            w = pi * (1.0 - pi)
-            w0 = pi0 * (1.0 - pi0)
-            K_uu = float(w.sum() + z * w0)
-            K_su = float((w * v).sum())
-            Ks += float((pi * v).sum())
-            Kss += float((w * v * v).sum())
-            Kuu_all.append(K_uu)
-            if K_uu > 0:
-                schur += K_su * K_su / K_uu
-            Knum += float(np.logaddexp(0.0, s * v + ub).sum()
-                          + z * np.logaddexp(0.0, ub))
-        return us, Ks, Kss, schur, Kuu_all, Knum
-
-    # Outer Newton: the derivative along the constrained path is the Schur
-    # complement, which the same pass already produced, so a Newton step costs
-    # nothing over the bisection step it replaces.
-    s = 0.0
-    u_start = list(u_den)
-    for _ in range(max_iter):
-        us, Ks, Kss, schur, _Kuu, _Kn = state(s, u_start)
-        u_start = us
-        f = Ks - t
-        deriv = Kss - schur
-        if deriv <= 1e-300:
-            return None
-        step = float(np.clip(f / deriv, -4.0, 4.0))
-        s_new = s - step
-        if abs(s_new - s) < 1e-12 or abs(f) < 1e-11 * max(1.0, abs(t)):
-            s = s_new
-            break
-        s = s_new
-        if abs(s) > 200.0:
-            return None
-
-    us, Ks, Kss, schur, Kuu_all, Knum = state(s, u_start)
-    if abs(s) < 1e-9:
-        return None
-    det_ratio = Kss - schur
-    if det_ratio <= 0:
-        return None
-    for b in range(B):
-        if Kuu_all[b] <= 0:
-            return None
-        det_ratio *= Kuu_all[b] / Kuu_den[b]
-
-    inner = 2.0 * ((K_den - sum(ud * nc for ud, nc in zip(u_den, strata_nc)))
-                   - (Knum - s * t - sum(ub * nc for ub, nc in zip(us, strata_nc))))
-    if inner <= 0 or det_ratio <= 0:
-        return None
-    w = float(np.sign(s) * np.sqrt(inner))
-    v = float(s * np.sqrt(det_ratio))
-    if abs(w) < 1e-9 or abs(v) < 1e-12:
-        return None
-    p = float(ndtr(-w) - _phi(w) * (1.0 / w - 1.0 / v))
-    return None if not np.isfinite(p) else float(min(max(p, 0.0), 1.0))
-
-
 
 #: Cap on how many expression values one Newton batch may hold.
 _SPA_MAX_BATCH_VALUES = 4_000_000

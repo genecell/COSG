@@ -36,8 +36,12 @@ def cpu_core_cosg_chunked(cellxgene, cluster_mat, mu, is_sparse_input,
         Whether cellxgene is sparse.
     remove_lowly_expressed : bool
         Whether to filter genes with low expression percentage.
-    expressed_pct : float
-        Minimum fraction of cells in a group that must express a gene.
+    expressed_pct : float or array of float, shape (n_groups,)
+        Minimum fraction of cells in a group that must express a gene: one
+        for every group, or one per group in the order of the rows of
+        ``cluster_mat``. A floor of 0 leaves a group the minimum of
+        ``expressed_min_num_cells_in_target_group`` cells, as on every path;
+        ``remove_lowly_expressed=False`` switches the filter off.
     expressed_min_num_cells_in_target_group : int
         Absolute minimum nonzero count threshold.
     chunk_size : int or None
@@ -50,10 +54,13 @@ def cpu_core_cosg_chunked(cellxgene, cluster_mat, mu, is_sparse_input,
     genexlambda : np.ndarray, shape (n_genes, n_groups)
         COSG penalty scores. Dense numpy array.
     """
+    from ._floor import floor_thresholds, floors_for_columns, tracks_floor
+
     t0 = time.time()
 
     n_cells, n_genes = cellxgene.shape
     n_groups = cluster_mat.shape[0]
+    floors = floors_for_columns(expressed_pct, n_groups)
 
     # ── Auto-select chunk size ──────────────────────────────────────────
     if chunk_size is None:
@@ -82,7 +89,7 @@ def cpu_core_cosg_chunked(cellxgene, cluster_mat, mu, is_sparse_input,
     dot_accum = np.zeros((n_genes, n_groups), dtype=np.float64)
     gene_sq_accum = np.zeros(n_genes, dtype=np.float64)
 
-    if remove_lowly_expressed and expressed_pct > 0:
+    if tracks_floor(remove_lowly_expressed, floors, expressed_min_num_cells_in_target_group):
         nnz_accum = np.zeros((n_genes, n_groups), dtype=np.float64)
     else:
         nnz_accum = None
@@ -146,15 +153,17 @@ def cpu_core_cosg_chunked(cellxgene, cluster_mat, mu, is_sparse_input,
         # ── Accumulate nonzero counts ───────────────────────────────────
         if nnz_accum is not None:
             if is_sparse_input:
+                # "expressed" means a nonzero value, on every path: a stored
+                # zero is not an expressing cell
                 X_bin = X_chunk.copy()
-                X_bin.data = np.ones_like(X_bin.data)
+                X_bin.data = (X_bin.data != 0).astype(np.float64)
                 nnz_chunk = X_bin.T @ Lam_chunk
                 if sp_sparse.issparse(nnz_chunk):
                     nnz_chunk = nnz_chunk.toarray()
                 nnz_accum += nnz_chunk
                 del X_bin, nnz_chunk
             else:
-                X_bin = (X_chunk > 0).astype(np.float64)
+                X_bin = (X_chunk != 0).astype(np.float64)
                 nnz_accum += X_bin.T @ Lam_chunk.toarray()
                 del X_bin
 
@@ -185,15 +194,15 @@ def cpu_core_cosg_chunked(cellxgene, cluster_mat, mu, is_sparse_input,
     del cosine_sim
 
     # ── Apply expressed_pct filter ──────────────────────────────────────
+    # Each group's own floor, on its own column: max(N_k * pct_k, min_cells);
+    # groups without cells are left alone.
     if nnz_accum is not None:
+        thresholds = floor_thresholds(group_sizes, floors,
+                                      expressed_min_num_cells_in_target_group,
+                                      skip_empty=True)
         for k in range(n_groups):
-            n_cells_k = group_sizes[k]
-            if n_cells_k > 0:
-                threshold = max(
-                    n_cells_k * expressed_pct,
-                    expressed_min_num_cells_in_target_group
-                )
-                genexlambda[nnz_accum[:, k] < threshold, k] = -1
+            if thresholds[k] > 0:
+                genexlambda[nnz_accum[:, k] < thresholds[k], k] = -1
         del nnz_accum
 
     if verbosity > 0:
@@ -338,9 +347,9 @@ def cpu_nnz_counts_chunked(cellxgene, cluster_mat, is_sparse_input,
         if is_sparse_input:
             X_chunk = cellxgene_csr[start:end]
             X_bin = X_chunk.copy()
-            X_bin.data = np.ones_like(X_bin.data)
+            X_bin.data = (X_bin.data != 0).astype(np.float64)    # a stored zero is not expressing
         else:
-            X_bin = (cellxgene[start:end] > 0).astype(np.float64)
+            X_bin = (cellxgene[start:end] != 0).astype(np.float64)
 
         chunk_groups = cell_group_indices[start:end]
         Lam_chunk = sp_sparse.csr_matrix(

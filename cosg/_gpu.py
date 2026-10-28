@@ -30,6 +30,8 @@ from scipy import sparse as sp_sparse
 import cupy as cp
 import cupyx.scipy.sparse as cp_sparse
 
+from ._floor import floor_thresholds, floors_for_columns, tracks_floor
+
 
 def _cosine_similarity_gpu(X_gpu, Y_gpu):
     """
@@ -161,8 +163,9 @@ def gpu_core_cosg(cellxgene, cluster_mat, mu, is_sparse_input,
         Whether cellxgene is sparse.
     remove_lowly_expressed : bool
         Whether to filter lowly expressed genes.
-    expressed_pct : float
-        Minimum fraction of cells expressing a gene.
+    expressed_pct : float or array of float, shape (n_groups,)
+        Minimum fraction of cells expressing a gene: one for every group, or
+        one per group in the order of the rows of ``cluster_mat``.
     expressed_min_num_cells_in_target_group : int
         Minimum absolute number of cells expressing a gene.
     verbosity : int
@@ -178,6 +181,7 @@ def gpu_core_cosg(cellxgene, cluster_mat, mu, is_sparse_input,
     
     n_cells, n_genes = cellxgene.shape
     n_groups = cluster_mat.shape[0]
+    floors = floors_for_columns(expressed_pct, n_groups)
     
     if verbosity > 0:
         print(f"[gpu_cosg] Transferring {n_cells:,} × {n_genes:,} matrix to GPU...")
@@ -275,7 +279,7 @@ def gpu_core_cosg(cellxgene, cluster_mat, mu, is_sparse_input,
 
         if is_sparse_input:
             X_binary = X_gpu_ref.copy()
-            X_binary.data = cp.ones_like(X_binary.data)
+            X_binary.data = (X_binary.data != 0).astype(cp.float32)    # a stored zero is not expressing
         else:
             X_binary = (X_gpu_ref != 0).astype(cp.float32)
 
@@ -283,12 +287,14 @@ def gpu_core_cosg(cellxgene, cluster_mat, mu, is_sparse_input,
         nnz_per_gene_per_group = (cm_dense_ref @ X_binary).T  # → (genes, groups)
         del X_binary
 
-        # Group sizes and thresholds
+        # Group sizes and each group's threshold, max(N_k * pct_k, min_cells),
+        # in float32 as the device forms it for a scalar floor (a float32
+        # size times a Python float); built on the host so that it can be
+        # checked without a GPU
         n_cells_per_group = cm_dense_ref.sum(axis=1)  # (groups,)
-        thresholds = cp.maximum(
-            n_cells_per_group * expressed_pct,
-            expressed_min_num_cells_in_target_group
-        )
+        thresholds = cp.asarray(floor_thresholds(
+            cp.asnumpy(n_cells_per_group), floors,
+            expressed_min_num_cells_in_target_group, dtype=np.float32))
 
         # Set lowly expressed to -1 (matching CPU behavior)
         lowly_expressed_mask = nnz_per_gene_per_group < thresholds[cp.newaxis, :]
@@ -346,12 +352,9 @@ def gpu_core_cosg_batched(cellxgene, cluster_mat, mu, batch_info, unique_batches
         print(f"[gpu_cosg] Batch mode: {len(unique_batches)} batches, "
               f"{n_cells:,} cells × {n_genes:,} genes")
     
-    # Transfer full expression matrix to GPU once
-    if is_sparse_input:
-        X_gpu = _scipy_to_cupy_csr(cellxgene)
-    else:
-        X_gpu = cp.array(np.asarray(cellxgene, dtype=np.float32))
-    
+    # Each batch's rows are sent to the device on their own below; the whole
+    # matrix is not (it was uploaded here and never used).
+
     # Keep cluster_mat on CPU for slicing (scipy is better at fancy indexing)
     cm_csr = cluster_mat.tocsr()
     
@@ -422,7 +425,7 @@ def gpu_core_cosg_batched(cellxgene, cluster_mat, mu, batch_info, unique_batches
     if cp.any(zero_mask):
         cosine_sim[:, zero_mask] = cp.nan
     
-    del accum, X_gpu
+    del accum
     
     # Apply COSG penalty formula
     # Replace NaN with 0 for computation (NaN groups get 0 scores)
@@ -544,8 +547,12 @@ def gpu_core_cosg_chunked(cellxgene, cluster_mat, mu, is_sparse_input,
         Whether cellxgene is sparse.
     remove_lowly_expressed : bool
         Whether to filter genes with low expression percentage.
-    expressed_pct : float
-        Minimum fraction of cells in a group that must express a gene.
+    expressed_pct : float or array of float, shape (n_groups,)
+        Minimum fraction of cells in a group that must express a gene: one
+        for every group, or one per group in the order of the rows of
+        ``cluster_mat``. A floor of 0 leaves a group the minimum of
+        ``expressed_min_num_cells_in_target_group`` cells, as on every path;
+        ``remove_lowly_expressed=False`` switches the filter off.
     expressed_min_num_cells_in_target_group : int
         Minimum number of cells expressing a gene in target group.
     chunk_size : int or None
@@ -562,6 +569,7 @@ def gpu_core_cosg_chunked(cellxgene, cluster_mat, mu, is_sparse_input,
 
     n_cells, n_genes = cellxgene.shape
     n_groups = cluster_mat.shape[0]
+    floors = floors_for_columns(expressed_pct, n_groups)
 
     # -- Auto-select chunk size --
     if chunk_size is None:
@@ -590,7 +598,7 @@ def gpu_core_cosg_chunked(cellxgene, cluster_mat, mu, is_sparse_input,
     dot_accum = cp.zeros((n_genes, n_groups), dtype=cp.float32)
     gene_sq_accum = cp.zeros(n_genes, dtype=cp.float32)
 
-    if remove_lowly_expressed and expressed_pct > 0:
+    if tracks_floor(remove_lowly_expressed, floors, expressed_min_num_cells_in_target_group):
         nnz_accum = cp.zeros((n_genes, n_groups), dtype=cp.float32)
     else:
         nnz_accum = None
@@ -667,14 +675,14 @@ def gpu_core_cosg_chunked(cellxgene, cluster_mat, mu, is_sparse_input,
         if nnz_accum is not None:
             if is_sparse_input:
                 X_bin = X_chunk_gpu.copy()
-                X_bin.data = cp.ones_like(X_bin.data)
+                X_bin.data = (X_bin.data != 0).astype(cp.float32)    # a stored zero is not expressing
                 nnz_chunk = Lam_dense_T @ X_bin  # (groups x genes)
                 if cp_sparse.issparse(nnz_chunk):
                     nnz_chunk = nnz_chunk.toarray()
                 nnz_accum += nnz_chunk.T  # -> (genes x groups)
                 del X_bin, nnz_chunk
             else:
-                X_bin = (X_chunk_gpu > 0).astype(cp.float32)
+                X_bin = (X_chunk_gpu != 0).astype(cp.float32)
                 nnz_accum += (Lam_dense_T @ X_bin).T
                 del X_bin
 
@@ -709,15 +717,17 @@ def gpu_core_cosg_chunked(cellxgene, cluster_mat, mu, is_sparse_input,
     del cosine_sim
 
     # -- Apply expressed_pct filter --
+    # Each group's own threshold, max(N_k * pct_k, min_cells), in float32 as
+    # the device forms it; groups without cells are left alone. A filtered
+    # feature scores -1, COSG's sentinel on every path (this path wrote -inf,
+    # which indexByGene keeps and iqrLogNormalize turns into NaN).
     if nnz_accum is not None:
+        thresholds = floor_thresholds(group_sizes_np, floors,
+                                      expressed_min_num_cells_in_target_group,
+                                      dtype=np.float32, skip_empty=True)
         for k in range(n_groups):
-            n_cells_k = group_sizes_gpu[k]
-            if n_cells_k > 0:
-                threshold = max(
-                    float(n_cells_k * expressed_pct),
-                    float(expressed_min_num_cells_in_target_group)
-                )
-                genexlambda[nnz_accum[:, k] < threshold, k] = -cp.inf
+            if thresholds[k] > 0:
+                genexlambda[nnz_accum[:, k] < float(thresholds[k]), k] = -1.0
         del nnz_accum
 
     if verbosity > 0:
@@ -733,194 +743,3 @@ def gpu_core_cosg_chunked(cellxgene, cluster_mat, mu, is_sparse_input,
         print(f"[gpu_cosg_chunked] TOTAL: {time.time() - t0:.3f}s")
 
     return result
-
-
-def gpu_core_cosg_full(
-    cellxgene,
-    cluster_mat,
-    mu,
-    n_genes_user,
-    var_names,
-    remove_lowly_expressed=False,
-    expressed_pct=0.1,
-    expressed_min_num_cells_in_target_group=3,
-    is_sparse_input=True,
-    verbosity=0,
-):
-    """
-    Full GPU COSG pipeline: cosine sim + penalty + filtering + top-k.
-
-    Keeps everything on GPU including expressed_pct filtering and top-k
-    extraction, bypassing the CPU per-group loop entirely.
-
-    Parameters
-    ----------
-    cellxgene : scipy.sparse.csr_matrix or np.ndarray, (n_cells, n_genes)
-    cluster_mat : scipy.sparse.csr_matrix, (n_groups, n_cells)
-    mu : float
-    n_genes_user : int
-    var_names : np.ndarray of str, shape (n_genes,)
-    remove_lowly_expressed : bool
-    expressed_pct : float
-    expressed_min_num_cells_in_target_group : int
-    is_sparse_input : bool
-    verbosity : int
-
-    Returns
-    -------
-    top_gene_names : np.ndarray, shape (n_genes_user, n_groups), dtype object
-    top_gene_scores : np.ndarray, shape (n_genes_user, n_groups), dtype float32
-    top_gene_indices : np.ndarray, shape (n_genes_user, n_groups), dtype int
-    """
-    t0 = time.time()
-
-    n_cells, n_genes = cellxgene.shape
-    n_groups = cluster_mat.shape[0]
-
-    if verbosity > 0:
-        print(f"[gpu_cosg] Transferring {n_cells:,} × {n_genes:,} matrix to GPU...")
-
-    # ── Transfer to GPU ──────────────────────────────────────────────────
-    t_xfer = time.time()
-
-    if is_sparse_input:
-        X_gpu = _scipy_to_cupy_csr(cellxgene)
-    else:
-        X_gpu = cp.array(np.asarray(cellxgene, dtype=np.float32))
-
-    cm_gpu = _scipy_to_cupy_csr(cluster_mat)
-
-    if verbosity > 0:
-        print(f"[gpu_cosg] Transfer to GPU:      {time.time() - t_xfer:.3f}s")
-
-    # ── Cosine similarity: (genes × groups) ──────────────────────────────
-    t_cos = time.time()
-
-    cm_dense = cm_gpu.toarray()  # (n_groups, n_cells)
-    if cp_sparse.issparse(X_gpu):
-        dots = cm_dense @ X_gpu
-    else:
-        dots = cm_dense @ X_gpu
-    dots = dots.T  # → (n_genes, n_groups)
-
-    # L2 norms for X.T rows (= column norms of X)
-    if cp_sparse.issparse(X_gpu):
-        Xsq = X_gpu.copy()
-        Xsq.data = Xsq.data ** 2
-        gene_norms = cp.sqrt(cp.array(Xsq.sum(axis=0)).ravel())
-        del Xsq
-    else:
-        gene_norms = cp.sqrt(cp.sum(X_gpu ** 2, axis=0))
-
-    # L2 norms for cluster_mat rows
-    cm_sq = cm_gpu.copy()
-    cm_sq.data = cm_sq.data ** 2
-    group_norms = cp.sqrt(cp.array(cm_sq.sum(axis=1)).ravel())
-    del cm_sq
-
-    gene_norms = cp.maximum(gene_norms, 1e-12)
-    group_norms = cp.maximum(group_norms, 1e-12)
-
-    dots /= gene_norms[:, cp.newaxis]
-    dots /= group_norms[cp.newaxis, :]
-
-    cosine_sim = dots
-    del dots
-
-    if verbosity > 0:
-        print(f"[gpu_cosg] Cosine similarity:    {time.time() - t_cos:.3f}s")
-
-    # ── COSG penalty formula ─────────────────────────────────────────────
-    t_pen = time.time()
-
-    genexlambda_gpu = _apply_cosg_penalty_gpu(cosine_sim, mu)
-    del cosine_sim
-
-    if verbosity > 0:
-        print(f"[gpu_cosg] Penalty formula:      {time.time() - t_pen:.3f}s")
-
-    # ── Expressed-pct filtering (GPU) ────────────────────────────────────
-    t_filt = time.time()
-
-    if remove_lowly_expressed and is_sparse_input:
-        # Build binary matrix: 1 where nonzero
-        X_binary_gpu = X_gpu.copy()
-        X_binary_gpu.data = cp.ones_like(X_binary_gpu.data)
-
-        # nnz per gene per group: cm_dense @ X_binary → (n_groups, n_genes)
-        nnz_per_gene_per_group = cm_dense @ X_binary_gpu  # dense @ sparse → dense
-        nnz_per_gene_per_group = nnz_per_gene_per_group.T  # → (n_genes, n_groups)
-        del X_binary_gpu
-
-        # n_cells per group
-        n_cells_per_group = cp.array(cm_gpu.sum(axis=1)).ravel()  # (n_groups,)
-
-        # Threshold: max(n_cells_per_group * expressed_pct, min_cells)
-        thresholds = cp.maximum(
-            n_cells_per_group * expressed_pct,
-            expressed_min_num_cells_in_target_group
-        )
-
-        # Mask lowly expressed
-        lowly_expressed_mask = nnz_per_gene_per_group < thresholds[cp.newaxis, :]
-        genexlambda_gpu[lowly_expressed_mask] = -1.0
-        del nnz_per_gene_per_group, lowly_expressed_mask
-    elif remove_lowly_expressed and not is_sparse_input:
-        # Dense path: count nonzeros per column per group
-        X_binary = (X_gpu != 0).astype(cp.float32)
-        nnz_per_gene_per_group = (cm_dense @ X_binary).T  # (n_genes, n_groups)
-        del X_binary
-
-        n_cells_per_group = cp.array(cm_gpu.sum(axis=1)).ravel()
-        thresholds = cp.maximum(
-            n_cells_per_group * expressed_pct,
-            expressed_min_num_cells_in_target_group
-        )
-        lowly_expressed_mask = nnz_per_gene_per_group < thresholds[cp.newaxis, :]
-        genexlambda_gpu[lowly_expressed_mask] = -1.0
-        del nnz_per_gene_per_group, lowly_expressed_mask
-
-    del X_gpu, cm_gpu, cm_dense
-
-    if verbosity > 0:
-        print(f"[gpu_cosg] Expressed filtering:  {time.time() - t_filt:.3f}s")
-
-    # ── Top-k extraction (GPU) ───────────────────────────────────────────
-    t_topk = time.time()
-
-    # Clamp n_genes_user to available genes
-    actual_k = min(n_genes_user, n_genes)
-
-    # argpartition for top-k per column
-    top_k_idx = cp.argpartition(genexlambda_gpu, -actual_k, axis=0)[-actual_k:]
-
-    # Gather scores at top-k positions
-    top_k_scores = cp.take_along_axis(genexlambda_gpu, top_k_idx, axis=0)
-
-    # Sort within top-k (descending)
-    sort_order = cp.argsort(-top_k_scores, axis=0)
-    top_k_idx_sorted = cp.take_along_axis(top_k_idx, sort_order, axis=0)
-    top_k_scores_sorted = cp.take_along_axis(top_k_scores, sort_order, axis=0)
-
-    del genexlambda_gpu, top_k_idx, top_k_scores, sort_order
-
-    if verbosity > 0:
-        print(f"[gpu_cosg] Top-k extraction:     {time.time() - t_topk:.3f}s")
-
-    # ── Transfer only small top-k results to CPU ─────────────────────────
-    t_back = time.time()
-
-    top_k_idx_cpu = cp.asnumpy(top_k_idx_sorted)        # (n_genes_user, n_groups)
-    top_k_scores_cpu = cp.asnumpy(top_k_scores_sorted)   # (n_genes_user, n_groups)
-
-    del top_k_idx_sorted, top_k_scores_sorted
-    cp.get_default_memory_pool().free_all_blocks()
-
-    # Map indices to gene names
-    top_gene_names = var_names[top_k_idx_cpu]  # (n_genes_user, n_groups)
-
-    if verbosity > 0:
-        print(f"[gpu_cosg] Transfer to CPU:      {time.time() - t_back:.3f}s")
-        print(f"[gpu_cosg] Total GPU pipeline:   {time.time() - t0:.3f}s")
-
-    return top_gene_names, top_k_scores_cpu.astype(np.float32), top_k_idx_cpu
